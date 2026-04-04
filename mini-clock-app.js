@@ -570,12 +570,17 @@
   let clockAnimationAt = 0;
   let clockRenderedText = "";
   let clockRenderedFormatKey = "";
+  let clockRenderedMeridiem = "";
+  let clockRenderedMeridiemStyle = "";
+  let clockWorldRenderSignature = "";
+  let clockStatusRenderSignature = "";
   let clockMeridiemFrame = 0;
   let clockMeridiemSyncTimer = 0;
   let clockMeridiemResizeObserver = null;
   let clockMeridiemObserversReady = false;
   let alarmDisplayTicker = 0;
   let alarmDisplayToggleFrame = 0;
+  let timerOverlayLastSyncAt = 0;
   let appliedScalePercent = normalizeScaleValue(DEFAULT_STATE.size);
   let adaptiveScaleSignature = "";
   let minimalRestoreClickBlockUntil = 0;
@@ -3677,7 +3682,10 @@
     const supportsMeridiem = state.type === "clock" || alarmUsesClockDisplay();
     const is12h = clockHourOptionById(state.clock?.hourCycle).id === 12;
     const text = String(meridiem || "").trim().toUpperCase();
+    const styleId = clockAmPmStyleOptionById(state.clock?.ampmStyle).id;
     if (!supportsMeridiem || !is12h || !text) {
+      const wasHidden = els.clockMeridiem.hidden;
+      const hadText = Boolean(clockRenderedMeridiem || els.clockMeridiem.textContent);
       els.clockMeridiem.hidden = true;
       els.clockMeridiem.textContent = "";
       els.clockMeridiem.replaceChildren();
@@ -3686,9 +3694,16 @@
       els.clockMeridiem.style.top = "";
       els.clockMeridiem.style.fontSize = "";
       els.clockMeridiem.style.removeProperty("--meridiem-badge-size");
+      if (!wasHidden || hadText) {
+        scheduleClockMeridiemPosition();
+      }
+      clockRenderedMeridiem = "";
+      clockRenderedMeridiemStyle = "";
       return;
     }
-    const styleId = clockAmPmStyleOptionById(state.clock?.ampmStyle).id;
+    if (!els.clockMeridiem.hidden && clockRenderedMeridiem === text && clockRenderedMeridiemStyle === styleId) {
+      return;
+    }
     const isVerticalBadge = styleId === "before-badge" || styleId === "after-badge";
     const isBadge = styleId.includes("badge");
     els.clockMeridiem.hidden = false;
@@ -3715,6 +3730,8 @@
     } else {
       els.clockMeridiem.textContent = text;
     }
+    clockRenderedMeridiem = text;
+    clockRenderedMeridiemStyle = styleId;
     scheduleClockMeridiemPosition();
   }
 
@@ -3727,7 +3744,14 @@
     });
   }
 
-  function scheduleTimerOverlayLayoutSync() {
+  function scheduleTimerOverlayLayoutSync({ force = false } = {}) {
+    if (!force && isMillisecondsClockMode()) {
+      const now = performance.now();
+      if (now - timerOverlayLastSyncAt < 150) return;
+      timerOverlayLastSyncAt = now;
+    } else if (force) {
+      timerOverlayLastSyncAt = performance.now();
+    }
     scheduleClockMeridiemPosition();
     scheduleAlarmDisplayTogglePosition();
     requestAnimationFrame(() => {
@@ -4096,9 +4120,44 @@
     return span;
   }
 
+  function isMillisecondsClockMode() {
+    return state.type === "clock" && clockPrecisionOptionById(state.clock?.precision).id === "milliseconds";
+  }
+
+  function patchClockDigitsInPlace(text) {
+    if (!els.timerText) return false;
+    const value = String(text);
+    const chars = [...els.timerText.querySelectorAll(".timer-char")];
+    if (!chars.length || chars.length !== value.length) return false;
+
+    const faces = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const ch = value[index];
+      const node = chars[index];
+      if (!(node instanceof HTMLElement) || node.classList.contains("is-changing")) return false;
+      const isSep = isTimerSeparator(ch);
+      if (isSep !== node.classList.contains("sep")) return false;
+      if ((ch === ".") !== node.classList.contains("dot")) return false;
+      if (!node.firstElementChild || !(node.firstElementChild instanceof HTMLElement)) return false;
+      const face = node.firstElementChild;
+      if (!face.classList.contains("timer-char-face")) return false;
+      faces.push(face);
+    }
+
+    faces.forEach((face, index) => {
+      const ch = value[index];
+      if (face.textContent !== ch) face.textContent = ch;
+    });
+    return true;
+  }
+
   function resetClockRenderState() {
     clockRenderedText = "";
     clockRenderedFormatKey = "";
+    clockRenderedMeridiem = "";
+    clockRenderedMeridiemStyle = "";
+    clockWorldRenderSignature = "";
+    clockStatusRenderSignature = "";
     clockAnimationAt = 0;
     if (clockMeridiemFrame) {
       cancelAnimationFrame(clockMeridiemFrame);
@@ -4283,6 +4342,17 @@
 
   function renderClockDigits(text, { animationId = "none", animate = false, formatKey = "" } = {}) {
     const value = String(text);
+    const previousValue = clockRenderedText;
+    const sameFormat = clockRenderedFormatKey === formatKey;
+    if (!animate && sameFormat && patchClockDigitsInPlace(value)) {
+      if (previousValue !== value) {
+        els.timerButton.setAttribute("aria-label", `Timer ${value}`);
+      }
+      clockRenderedText = value;
+      clockRenderedFormatKey = formatKey;
+      scheduleTimerOverlayLayoutSync();
+      return;
+    }
     const previous = animate && clockRenderedFormatKey === formatKey ? clockRenderedText : "";
     const canAnimate = Boolean(
       animate
@@ -8489,6 +8559,9 @@
     }
 
     const formatOptions = clockFormatOptions(state.clock);
+    const worldFormatOptions = clockPrecisionOptionById(formatOptions.precision).id === "milliseconds"
+      ? { ...formatOptions, precision: "seconds" }
+      : formatOptions;
     const set = clockCitySetById(state.clock?.citySet);
     const targetCount = Math.max(1, (set.cityIds || []).length || 5);
     const source = clockCitiesForSet(set.id, { includeBackups: true });
@@ -8502,7 +8575,7 @@
 
     const fragment = document.createDocumentFragment();
     list.forEach(city => {
-      fragment.appendChild(createClockCityCard(city, now, formatOptions));
+      fragment.appendChild(createClockCityCard(city, now, worldFormatOptions));
     });
     els.clockWorld.replaceChildren(fragment);
   }
@@ -9132,13 +9205,38 @@
     const formatOptions = clockFormatOptions(state.clock);
     const zone = clockBaseTimeZone(state.clock);
     const display = clockDisplayPartsInZone(now, zone, formatOptions);
-    clockRenderedText = display.time;
-    clockRenderedFormatKey = `${formatOptions.hourCycle}|${formatOptions.precision}|${formatOptions.zoneId}`;
-    renderDigits(display.time);
+    const formatKey = `${formatOptions.hourCycle}|${formatOptions.precision}|${formatOptions.zoneId}`;
+    renderClockDigits(display.time, {
+      animationId: "none",
+      animate: false,
+      formatKey,
+    });
     setClockMeridiem(display.meridiem);
-    setPreview(typeLabel(state.type));
-    setDurationPill(totalSummaryForType(), "LIVE");
-    renderClockWorld(now);
+    const previewLabel = typeLabel(state.type);
+    const durationLabel = totalSummaryForType();
+    const statusSignature = `${previewLabel}|${durationLabel}|LIVE`;
+    if (clockStatusRenderSignature !== statusSignature) {
+      clockStatusRenderSignature = statusSignature;
+      setPreview(previewLabel);
+      setDurationPill(durationLabel, "LIVE");
+    }
+
+    const precision = clockPrecisionOptionById(formatOptions.precision).id;
+    const visibleWorld = state.type === "clock" && formatOptions.showWorld && !document.body.classList.contains("is-minimal");
+    if (!visibleWorld) {
+      if (clockWorldRenderSignature !== "hidden") {
+        clockWorldRenderSignature = "hidden";
+        renderClockWorld(now);
+      }
+      return;
+    }
+    const worldUnitMs = precision === "minute" ? 60000 : 1000;
+    const worldSlot = Math.floor(now.getTime() / worldUnitMs);
+    const worldSignature = `${formatOptions.zoneId}|${formatOptions.citySet}|${formatOptions.hourCycle}|${precision}|${worldSlot}`;
+    if (clockWorldRenderSignature !== worldSignature) {
+      clockWorldRenderSignature = worldSignature;
+      renderClockWorld(now);
+    }
   }
 
   function stopClockTicker() {
