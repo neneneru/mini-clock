@@ -1218,9 +1218,9 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     position:relative;
     left:auto;
     top:auto;
-    transform:translateY(-16px);
+    transform:translateY(clamp(-72px,-9vh,-44px));
     width:min(100%,260px);
-    margin:0 auto -14px;
+    margin:0 auto clamp(8px,2vh,18px);
   }
   .stopwatch-start,.stopwatch-actions,.stopwatch-stats{width:100%}
   .stopwatch-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
