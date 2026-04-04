@@ -9870,9 +9870,8 @@
     const isSlot = state.type === "slot";
     const minimal = document.body.classList.contains("is-minimal");
     const showSlotDetailUi = isSlot && !minimal && state.detailPanelVisible;
-    const showSlotStateUi = isSlot && !minimal && !state.detailPanelVisible;
     const showSlotStateMinimal = isSlot && minimal && state.detailPanelVisible;
-    const showSlotState = showSlotDetailUi || showSlotStateUi || showSlotStateMinimal;
+    const showSlotState = showSlotDetailUi || showSlotStateMinimal;
     document.body.classList.toggle("show-minimal-slot-state", showSlotStateMinimal);
     if (els.timerButton) els.timerButton.classList.toggle("is-slot-mode", isSlot);
     if (els.timerText) els.timerText.hidden = isSlot;
@@ -9880,7 +9879,7 @@
     if (els.slotStateChip) els.slotStateChip.hidden = !showSlotState;
     const visible = showSlotState;
     els.stage?.classList.toggle("has-slot", showSlotDetailUi);
-    els.slotPanel.classList.toggle("is-state-only", showSlotStateUi || showSlotStateMinimal);
+    els.slotPanel.classList.toggle("is-state-only", showSlotStateMinimal);
     els.slotPanel.hidden = !visible;
     renderSlotReelValues();
     if (!visible) {
@@ -12048,6 +12047,9 @@
     const next = typeof force === "boolean" ? force : !document.body.classList.contains("is-minimal");
     document.body.classList.toggle("is-minimal", next);
     syncMinimalUI();
+    renderSequencePanel();
+    renderStopwatchPanel();
+    renderSlotPanel();
     renderClockWorld();
     renderAlarmBoard();
     scheduleClockMeridiemLayoutSync();
