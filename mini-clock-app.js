@@ -3598,7 +3598,7 @@
 
     if (isMobile) {
       const mobileGapX = Math.max(10, textRect.height * 0.11);
-      const mobileTopLift = Math.max(6, leadingRect.height * 0.1);
+      const mobileTopLift = Math.max(10, leadingRect.height * 0.14);
       left = textRect.right - frameRect.left + mobileGapX + width * 0.5;
       top = leadingRect.top - frameRect.top - mobileTopLift - height * 0.5;
     }
