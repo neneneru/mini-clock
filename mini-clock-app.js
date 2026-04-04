@@ -78,8 +78,11 @@
     slotReelCenter: $("slotReelCenter"),
     slotReelRight: $("slotReelRight"),
     slotReelValueLeft: $("slotReelValueLeft"),
+    slotReelValueLeftNext: $("slotReelValueLeftNext"),
     slotReelValueCenter: $("slotReelValueCenter"),
+    slotReelValueCenterNext: $("slotReelValueCenterNext"),
     slotReelValueRight: $("slotReelValueRight"),
+    slotReelValueRightNext: $("slotReelValueRightNext"),
     slotFeed: $("slotFeed"),
     slotPointValue: $("slotPointValue"),
     slotStarValue: $("slotStarValue"),
@@ -721,6 +724,8 @@
   let cloudAutoSyncTimer = 0;
   let cloudSuppressAutoPush = false;
   let slotVisualRefreshTimer = 0;
+  let slotFxProfileCacheAt = 0;
+  let slotFxProfileCache = null;
   let slotResetConfirmOpen = false;
 
   const picker = {
@@ -9394,6 +9399,7 @@
   function setSlotVisualMode(mode = "idle") {
     const row = els.slotStateRow || els.slotStateChip?.closest(".slot-state-row");
     const visual = row || els.slotStateChip;
+    const fxProfile = slotEffectProfile();
     if (visual) {
       visual.classList.remove("is-slot-spin", "is-slot-reach", "is-slot-big");
       if (mode === "spin") visual.classList.add("is-slot-spin");
@@ -9401,17 +9407,80 @@
       if (mode === "big") visual.classList.add("is-slot-big");
     }
     if (stageTimer) {
-      stageTimer.classList.remove("slot-fx-reach", "slot-fx-big");
+      stageTimer.classList.remove("slot-fx-reach", "slot-fx-big", "slot-fx-lite");
       if (mode === "reach") stageTimer.classList.add("slot-fx-reach");
       if (mode === "big") stageTimer.classList.add("slot-fx-big");
+      if ((mode === "reach" || mode === "big") && fxProfile.liteBackdrop) {
+        stageTimer.classList.add("slot-fx-lite");
+      }
+    }
+  }
+
+  function slotEffectProfile() {
+    const now = performance.now();
+    if (slotFxProfileCache && (now - slotFxProfileCacheAt) < 12000) return slotFxProfileCache;
+    const reducedMotion = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+    const coarsePointer = Boolean(window.matchMedia?.("(pointer: coarse)")?.matches);
+    const cores = Math.max(1, Math.floor(Number(navigator.hardwareConcurrency) || 4));
+    const memory = Math.max(1, Number(navigator.deviceMemory) || 4);
+    const isLow = reducedMotion || cores <= 2 || memory <= 2;
+    const isMedium = !isLow && (coarsePointer || cores <= 6 || memory <= 4);
+    const profile = isLow
+      ? {
+          tier: "low",
+          countScale: 0.36,
+          detail: "core",
+          bigBursts: 2,
+          reachBursts: 0,
+          liveBursts: 0,
+          liteBackdrop: true,
+        }
+      : isMedium
+        ? {
+            tier: "medium",
+            countScale: 0.54,
+            detail: "lite",
+            bigBursts: 3,
+            reachBursts: 1,
+            liveBursts: 0,
+            liteBackdrop: true,
+          }
+        : {
+            tier: "high",
+            countScale: 0.72,
+            detail: "full",
+            bigBursts: 4,
+            reachBursts: 2,
+            liveBursts: 1,
+            liteBackdrop: false,
+          };
+    slotFxProfileCacheAt = now;
+    slotFxProfileCache = profile;
+    return profile;
+  }
+
+  function emitSlotJackpotFlash(anchor = stageTimer || timerFrame, fxProfile = slotEffectProfile()) {
+    if (!(anchor instanceof HTMLElement)) return;
+    const createFlash = className => {
+      const flash = document.createElement("div");
+      flash.className = className ? `slot-jackpot-flash ${className}` : "slot-jackpot-flash";
+      anchor.appendChild(flash);
+      window.setTimeout(() => flash.remove(), 2200);
+    };
+    createFlash("");
+    if (fxProfile.bigBursts >= 3) {
+      window.setTimeout(() => createFlash("is-second"), 120);
+    }
+    if (fxProfile.bigBursts >= 4) {
+      window.setTimeout(() => createFlash("is-third"), 280);
     }
   }
 
   function slotReelNodes() {
     return [
-      { root: els.slotReelLeft, value: els.slotReelValueLeft },
-      { root: els.slotReelCenter, value: els.slotReelValueCenter },
-      { root: els.slotReelRight, value: els.slotReelValueRight },
+      { root: els.slotReelLeft, value: els.slotReelValueLeft, next: els.slotReelValueLeftNext },
+      { root: els.slotReelCenter, value: els.slotReelValueCenter, next: els.slotReelValueCenterNext },
+      { root: els.slotReelRight, value: els.slotReelValueRight, next: els.slotReelValueRightNext },
     ];
   }
 
@@ -9474,9 +9543,9 @@
   function requestSlotReelRender() {
     if (!runtime.slot || !Array.isArray(runtime.slot.reels)) return;
     if (runtime.slot.renderRaf) return;
-    runtime.slot.renderRaf = window.requestAnimationFrame(() => {
+    runtime.slot.renderRaf = window.requestAnimationFrame(now => {
       runtime.slot.renderRaf = 0;
-      renderSlotReelValues();
+      renderSlotReelValues(now);
     });
   }
 
@@ -9509,24 +9578,35 @@
       : kind === "reach" || kind === "reach-live"
         ? reachPalette
         : phasePalette("rest");
+    const fxProfile = slotEffectProfile();
+    const bigScale = fxProfile.tier === "low" ? 0.58 : fxProfile.tier === "medium" ? 0.82 : 1;
+    const scaleForKind = kind === "big" ? bigScale : fxProfile.countScale;
+    const scaledCount = (base, min = 10) => Math.max(min, Math.round(base * scaleForKind));
+    const detail = kind === "big" || kind === "reach" || kind === "reach-live"
+      ? fxProfile.detail
+      : "core";
     const config = kind === "big"
-      ? { count: 360, stage: "rush", xSpread: 428, ySpread: 248, sweep: 586, durationMin: 1.28, durationMax: 2.34, opacityBase: 0.9 }
+      ? { count: scaledCount(360, 96), stage: "rush", xSpread: 428, ySpread: 248, sweep: 586, durationMin: 1.28, durationMax: 2.34, opacityBase: 0.9 }
       : kind === "reach"
-        ? { count: 220, stage: "turn", xSpread: 292, ySpread: 188, sweep: 438, durationMin: 1.12, durationMax: 1.92, opacityBase: 0.82 }
+        ? { count: scaledCount(220, 66), stage: "turn", xSpread: 292, ySpread: 188, sweep: 438, durationMin: 1.12, durationMax: 1.92, opacityBase: 0.82 }
         : kind === "reach-live"
-          ? { count: 96, stage: "turn", xSpread: 186, ySpread: 122, sweep: 286, durationMin: 0.82, durationMax: 1.38, opacityBase: 0.68 }
+          ? { count: scaledCount(96, 28), stage: "turn", xSpread: 186, ySpread: 122, sweep: 286, durationMin: 0.82, durationMax: 1.38, opacityBase: 0.68 }
         : kind === "miss"
-          ? { count: 66, stage: "calm", xSpread: 108, ySpread: 62, sweep: 156, durationMin: 0.9, durationMax: 1.26, opacityBase: 0.52 }
-          : { count: 40, stage: "calm", xSpread: 88, ySpread: 44, sweep: 120, durationMin: 0.86, durationMax: 1.18, opacityBase: 0.5 };
+          ? { count: scaledCount(66, 18), stage: "calm", xSpread: 108, ySpread: 62, sweep: 156, durationMin: 0.9, durationMax: 1.26, opacityBase: 0.52 }
+          : { count: scaledCount(40, 12), stage: "calm", xSpread: 88, ySpread: 44, sweep: 120, durationMin: 0.86, durationMax: 1.18, opacityBase: 0.5 };
     const anchor = target || timerFrame;
+    if (kind === "big") {
+      emitSlotJackpotFlash(stageTimer || timerFrame, fxProfile);
+    }
     createParticleBurst(anchor, {
       ...config,
       palette,
+      detail,
     });
-    if (kind === "big") {
+    if (kind === "big" && fxProfile.bigBursts >= 2) {
       window.setTimeout(() => {
         createParticleBurst(anchor, {
-          count: 280,
+          count: scaledCount(280, 74),
           palette: bigPalette,
           stage: "rush",
           xSpread: 364,
@@ -9535,11 +9615,14 @@
           durationMin: 1.16,
           durationMax: 2.06,
           opacityBase: 0.84,
+          detail,
         });
       }, 180);
+    }
+    if (kind === "big" && fxProfile.bigBursts >= 3) {
       window.setTimeout(() => {
         createParticleBurst(anchor, {
-          count: 220,
+          count: scaledCount(220, 58),
           palette: bigPalette,
           stage: "rush",
           xSpread: 328,
@@ -9548,12 +9631,29 @@
           durationMin: 1.08,
           durationMax: 1.98,
           opacityBase: 0.8,
+          detail,
         });
       }, 420);
-    } else if (kind === "reach") {
+    }
+    if (kind === "big" && fxProfile.bigBursts >= 4) {
       window.setTimeout(() => {
         createParticleBurst(anchor, {
-          count: 164,
+          count: scaledCount(184, 48),
+          palette: bigPalette,
+          stage: "rush",
+          xSpread: 282,
+          ySpread: 174,
+          sweep: 396,
+          durationMin: 1.02,
+          durationMax: 1.84,
+          opacityBase: 0.78,
+          detail,
+        });
+      }, 700);
+    } else if (kind === "reach" && fxProfile.reachBursts >= 2) {
+      window.setTimeout(() => {
+        createParticleBurst(anchor, {
+          count: scaledCount(164, 40),
           palette: reachPalette,
           stage: "turn",
           xSpread: 254,
@@ -9562,12 +9662,13 @@
           durationMin: 1.04,
           durationMax: 1.76,
           opacityBase: 0.78,
+          detail,
         });
       }, 160);
-    } else if (kind === "reach-live") {
+    } else if (kind === "reach-live" && fxProfile.liveBursts >= 1) {
       window.setTimeout(() => {
         createParticleBurst(anchor, {
-          count: 54,
+          count: scaledCount(54, 14),
           palette: reachPalette,
           stage: "turn",
           xSpread: 152,
@@ -9576,13 +9677,15 @@
           durationMin: 0.78,
           durationMax: 1.2,
           opacityBase: 0.6,
+          detail,
         });
       }, 90);
     }
   }
 
-  function renderSlotReelValues() {
+  function renderSlotReelValues(at = performance.now()) {
     ensureSlotRuntimeState();
+    const digits = Math.max(2, Math.floor(Number(state.slot?.reelDigits) || 10));
     const reels = runtime.slot.reels.length === 3
       ? runtime.slot.reels
       : runtime.slot.values.map((value, index) => ({
@@ -9601,10 +9704,40 @@
         value: runtime.slot.values[index] || 0,
         spinning: false,
         state: "idle",
+        tickStepMs: slotStepMsForReel(state.slot?.speed, index),
+        nextTickAt: at,
       };
-      if (node.value) node.value.textContent = String(clamp(Math.floor(Number(reel.value) || 0), 0, 9));
+      const currentDigit = clamp(Math.floor(Number(reel.value) || 0), 0, digits - 1);
+      const nextDigit = (currentDigit + 1) % digits;
+      const spinning = Boolean(runtime.slot.spinning && reel.spinning);
+      if (node.value) {
+        const nextText = String(currentDigit);
+        if (node.value.textContent !== nextText) node.value.textContent = nextText;
+      }
+      if (node.next) {
+        const nextText = String(nextDigit);
+        if (node.next.textContent !== nextText) node.next.textContent = nextText;
+      }
+      let progress = 0;
+      if (spinning) {
+        const tickMs = Math.max(12, Number(reel.tickStepMs) || slotStepMsForReel(state.slot?.speed, index));
+        const remaining = (Number.isFinite(reel.nextTickAt) ? reel.nextTickAt : (at + tickMs)) - at;
+        progress = clamp(1 - (remaining / tickMs), 0, 1);
+      }
+      if (node.value) {
+        const currentShift = spinning ? (-100 * progress) : 0;
+        const currentOpacity = spinning ? clamp(1 - progress * 0.86, 0.14, 1) : 1;
+        node.value.style.transform = `translate3d(-50%,${currentShift - 50}%,0)`;
+        node.value.style.opacity = String(currentOpacity);
+      }
+      if (node.next) {
+        const nextShift = spinning ? (100 - (progress * 100)) : 100;
+        const nextOpacity = spinning ? clamp(0.18 + progress * 0.9, 0, 1) : 0;
+        node.next.style.transform = `translate3d(-50%,${nextShift - 50}%,0)`;
+        node.next.style.opacity = String(nextOpacity);
+      }
       if (node.root) {
-        node.root.classList.toggle("is-spin", Boolean(reel.spinning));
+        node.root.classList.toggle("is-spin", spinning);
         node.root.classList.toggle("is-hit", reel.state === "hit");
         node.root.classList.toggle("is-perfect", reel.state === "perfect");
       }
@@ -10004,7 +10137,7 @@
         const tickMs = Math.max(12, reel.tickStepMs || slotStepMsForReel(state.slot?.speed, index));
         let advanced = false;
         while (now >= reel.nextTickAt) {
-          const step = Math.random() < 0.22 ? 2 : 1;
+          const step = 1;
           reel.value = (reel.value + step) % digits;
           runtime.slot.values[index] = reel.value;
           reel.nextTickAt += tickMs;
@@ -10014,7 +10147,7 @@
             break;
           }
         }
-        if (advanced) requestSlotReelRender();
+        if (advanced || reel.spinning) requestSlotReelRender();
         reel.rafId = window.requestAnimationFrame(tickReel);
       };
       reel.rafId = window.requestAnimationFrame(tickReel);
@@ -10831,7 +10964,10 @@
     durationMin = 0.95,
     durationMax = 1.55,
     opacityBase = 0.45,
+    detail = "full",
   }) {
+    if (!(target instanceof HTMLElement)) return;
+    const detailLevel = detail === "core" || detail === "lite" ? detail : "full";
     const fragment = document.createDocumentFragment();
     for (let index = 0; index < count; index++) {
       const color = palette[index % palette.length];
@@ -10876,18 +11012,28 @@
       particle.style.setProperty("--opacity", String(opacityBase + (stage === "rush" ? 0.2 : 0.06)));
       particle.style.setProperty("--duration", `${duration}s`);
 
-      const glow = document.createElement("div");
-      glow.style.cssText = [
-        "position:absolute",
-        "width:260%",
-        "height:260%",
-        "top:-80%",
-        "left:-80%",
-        "border-radius:50%",
-        "filter:blur(8px)",
-        `opacity:${.45 + (stage === "rush" ? .24 : stage === "turn" ? .14 : .08)}`,
-        `background:radial-gradient(circle,${rgba(.52)} 0%,${rgba(.16)} 48%,transparent 82%)`,
-      ].join(";");
+      if (detailLevel === "core") {
+        particle.style.background = `radial-gradient(circle,${rgba(1)} 0%,${rgba(.7)} 42%,${rgba(.16)} 72%,transparent 100%)`;
+        fragment.appendChild(particle);
+        continue;
+      }
+
+      const children = [];
+      if (detailLevel === "full") {
+        const glow = document.createElement("div");
+        glow.style.cssText = [
+          "position:absolute",
+          "width:260%",
+          "height:260%",
+          "top:-80%",
+          "left:-80%",
+          "border-radius:50%",
+          "filter:blur(8px)",
+          `opacity:${.45 + (stage === "rush" ? .24 : stage === "turn" ? .14 : .08)}`,
+          `background:radial-gradient(circle,${rgba(.52)} 0%,${rgba(.16)} 48%,transparent 82%)`,
+        ].join(";");
+        children.push(glow);
+      }
 
       const core = document.createElement("div");
       core.style.cssText = [
@@ -10896,6 +11042,7 @@
         "border-radius:999px",
         `background:radial-gradient(circle,${rgba(1)} 0%,${rgba(.78)} 30%,${rgba(.26)} 60%,transparent 100%)`,
       ].join(";");
+      children.push(core);
 
       const spark = document.createElement("div");
       spark.style.cssText = [
@@ -10914,8 +11061,9 @@
         `animation:streak ${duration}s ease-out forwards`,
       ].join(";");
       spark.style.setProperty("--rotation", `${(Math.random() - 0.5) * (stage === "rush" ? 12 : stage === "turn" ? 18 : 24)}deg`);
+      children.push(spark);
 
-      particle.append(glow, core, spark);
+      particle.append(...children);
       fragment.appendChild(particle);
     }
     target.appendChild(fragment);

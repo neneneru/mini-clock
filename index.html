@@ -128,6 +128,11 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .stage-timer.slot-fx-reach::after{opacity:.54;transform:scale(1.12);animation:slotReachSkyBurst 1.36s ease-out infinite}
 .stage-timer.slot-fx-big::before{opacity:1;transform:scale(1.1);animation:slotBigSky 1.08s ease-out infinite}
 .stage-timer.slot-fx-big::after{opacity:1;transform:scale(1.18);animation:slotBigSkyBurst 1.22s ease-out infinite;filter:saturate(136%) brightness(1.2)}
+.stage-timer.slot-fx-lite::before,.stage-timer.slot-fx-lite::after{mix-blend-mode:normal}
+.stage-timer.slot-fx-lite.slot-fx-reach::before{animation:slotReachSky 1.66s ease-out infinite}
+.stage-timer.slot-fx-lite.slot-fx-reach::after{animation:none;opacity:.26;transform:scale(1.02)}
+.stage-timer.slot-fx-lite.slot-fx-big::before{animation:slotBigSky 1.52s ease-out infinite}
+.stage-timer.slot-fx-lite.slot-fx-big::after{animation:none;opacity:.38;transform:scale(1.04);filter:saturate(118%) brightness(1.08)}
 .timer-frame{position:relative;isolation:isolate;display:grid;place-items:center;gap:12px;inline-size:min(100%,clamp(320px,86vw,1120px));inline-size:min(100%,clamp(320px,86svw,1120px));box-sizing:border-box;padding:24px 12px 22px;border-radius:34px;border:0;background:transparent;box-shadow:none;contain:layout size}
 .ambient{position:absolute;border-radius:50%;pointer-events:none;filter:blur(30px);opacity:.7}.ambient.a{width:280px;height:280px;background:radial-gradient(circle,rgba(255,255,255,.24),transparent 64%);left:-70px;top:-70px}.ambient.b{width:340px;height:340px;background:radial-gradient(circle,rgba(255,124,194,.28),transparent 66%);right:-130px;bottom:-120px}.ambient.c{width:220px;height:220px;background:radial-gradient(circle,rgba(255,211,106,.24),transparent 66%);right:18%;top:-80px}
   .phase-splash{position:absolute;left:clamp(-108px,-7vw,-48px);top:clamp(-66px,-6vh,-20px);z-index:0;pointer-events:none;font-family:'Caveat','Comic Sans MS',cursive;font-size:clamp(120px,16vw,240px);line-height:.82;font-weight:700;letter-spacing:.01em;transform:rotate(-13deg) scale(var(--phase-splash-scale));transform-origin:left center;opacity:.94;text-shadow:0 10px 28px rgba(255,255,255,.18);filter:drop-shadow(0 6px 18px rgba(255,255,255,.1));white-space:nowrap}
@@ -303,14 +308,42 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .stopwatch-laps::-webkit-scrollbar-thumb{background:rgba(255,255,255,.34);border-radius:999px}
 .stopwatch-empty{grid-column:1/-1;min-height:72px;display:grid;place-items:center;border-radius:20px;border:1px dashed rgba(255,255,255,.24);background:rgba(255,255,255,.14);color:rgba(255,255,255,.84);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
 .slot-bottom{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
-.slot-reel{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;gap:4px;min-height:98px;padding:8px 8px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.36);backdrop-filter:blur(14px) saturate(120%)}
+.slot-reel{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;gap:4px;min-height:98px;padding:8px 8px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.36);backdrop-filter:blur(14px) saturate(120%);contain:layout paint}
 .slot-reel::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 36%,rgba(255,255,255,.18),transparent 66%);opacity:.65;pointer-events:none}
 .slot-center .slot-reel{min-height:clamp(146px,24vh,196px);padding:12px 10px 12px;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 14px 34px rgba(88,66,124,.18)}
-.slot-reel.is-spin .slot-reel-value{animation:slotRoll .18s linear infinite}
+.slot-reel-track{position:relative;z-index:1;inline-size:100%;block-size:100%;min-block-size:1px;overflow:hidden;display:block}
+.slot-reel.is-spin .slot-reel-track{filter:drop-shadow(0 0 14px rgba(255,255,255,.2))}
 .slot-reel.is-hit{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 12px 30px rgba(255,210,142,.18),inset 0 1px 0 rgba(255,255,255,.42)}
 .slot-reel.is-perfect{box-shadow:0 0 0 1px rgba(176,255,221,.34),0 16px 34px rgba(160,255,223,.24),inset 0 1px 0 rgba(255,255,255,.48)}
-.slot-reel-value{position:relative;z-index:1;font-size:64px;font-weight:900;line-height:.9;letter-spacing:-.02em;color:#fff;text-shadow:0 0 18px rgba(255,255,255,.32);will-change:transform,filter;backface-visibility:hidden}
+.slot-reel-value{position:absolute;left:50%;top:50%;z-index:1;display:block;transform:translate3d(-50%,-50%,0);font-size:64px;font-weight:900;line-height:.9;letter-spacing:-.02em;color:#fff;text-shadow:0 0 18px rgba(255,255,255,.32);will-change:transform,opacity;backface-visibility:hidden}
+.slot-reel-value.is-next{opacity:0}
 .slot-center .slot-reel-value{font-size:clamp(90px,13vw,148px);line-height:.86}
+.slot-jackpot-flash{
+  position:absolute;
+  inset:-14% -10%;
+  z-index:3;
+  pointer-events:none;
+  opacity:0;
+  mix-blend-mode:screen;
+  transform:scale(.72);
+  transform-origin:center;
+  will-change:transform,opacity,filter;
+  background:
+    radial-gradient(circle at 50% 52%,rgba(255,255,255,.96) 0%,rgba(255,241,184,.78) 14%,rgba(255,145,198,.46) 30%,transparent 62%),
+    conic-gradient(from 16deg,rgba(255,133,186,.28),rgba(255,223,123,.34),rgba(118,215,255,.28),rgba(255,133,186,.28));
+  filter:saturate(132%) brightness(1.08) blur(.2px);
+  animation:slotJackpotFlash 1.24s cubic-bezier(.14,.82,.12,1) forwards;
+}
+.slot-jackpot-flash.is-second{
+  animation-duration:1.58s;
+  transform:scale(.86);
+  opacity:.88;
+}
+.slot-jackpot-flash.is-third{
+  animation-duration:1.92s;
+  transform:scale(.96);
+  opacity:.72;
+}
 .slot-dashboard{display:grid;gap:6px;padding-inline:2px}
 .slot-inline{display:flex;flex-wrap:wrap;align-items:baseline;gap:12px}
 .slot-inline-item{display:inline-flex;align-items:baseline;gap:6px;color:rgba(255,255,255,.9);font-variant-numeric:tabular-nums lining-nums;font-feature-settings:"tnum" 1,"lnum" 1}
@@ -342,6 +375,12 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 @keyframes slotReachSkyBurst{0%{opacity:.02;transform:scale(.64)}45%{opacity:.7;transform:scale(1.12)}100%{opacity:.08;transform:scale(1.34)}}
 @keyframes slotBigSky{0%{opacity:.08;transform:scale(.74)}35%{opacity:.86;transform:scale(1.04)}100%{opacity:.14;transform:scale(1.28)}}
 @keyframes slotBigSkyBurst{0%{opacity:.04;transform:scale(.54)}38%{opacity:1;transform:scale(1.2)}100%{opacity:.18;transform:scale(1.62)}}
+@keyframes slotJackpotFlash{
+  0%{opacity:0;transform:scale(.62);filter:saturate(138%) brightness(1.2) blur(.26px)}
+  18%{opacity:1;transform:scale(1.02);filter:saturate(166%) brightness(1.42) blur(.14px)}
+  42%{opacity:.94;transform:scale(1.22);filter:saturate(154%) brightness(1.28)}
+  100%{opacity:0;transform:scale(1.58);filter:saturate(122%) brightness(1.02)}
+}
 .lap-row{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:8px;min-height:116px;padding:14px 14px 13px;border-radius:20px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.18));box-shadow:inset 0 1px 0 rgba(255,255,255,.36);backdrop-filter:blur(16px) saturate(120%)}
 .lap-row>*{position:relative;z-index:1}
 .lap-decor{position:absolute;right:-8px;bottom:-28px;font-size:156px;font-weight:800;line-height:.9;color:rgba(255,255,255,.2);letter-spacing:-.06em;pointer-events:none;z-index:0;transform:rotate(18deg)}
@@ -1338,13 +1377,22 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
           <div class="timer-text" id="timerText">05:00</div>
           <div class="slot-center" id="slotCenter" hidden aria-label="slot reels">
             <article class="slot-reel" id="slotReelLeft">
-              <strong class="slot-reel-value" id="slotReelValueLeft">7</strong>
+              <div class="slot-reel-track">
+                <strong class="slot-reel-value" id="slotReelValueLeft">7</strong>
+                <strong class="slot-reel-value is-next" id="slotReelValueLeftNext">8</strong>
+              </div>
             </article>
             <article class="slot-reel" id="slotReelCenter">
-              <strong class="slot-reel-value" id="slotReelValueCenter">7</strong>
+              <div class="slot-reel-track">
+                <strong class="slot-reel-value" id="slotReelValueCenter">7</strong>
+                <strong class="slot-reel-value is-next" id="slotReelValueCenterNext">8</strong>
+              </div>
             </article>
             <article class="slot-reel" id="slotReelRight">
-              <strong class="slot-reel-value" id="slotReelValueRight">7</strong>
+              <div class="slot-reel-track">
+                <strong class="slot-reel-value" id="slotReelValueRight">7</strong>
+                <strong class="slot-reel-value is-next" id="slotReelValueRightNext">8</strong>
+              </div>
             </article>
           </div>
         </button>
