@@ -68,22 +68,21 @@ body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only{
   left:50%;
   top:50%;
   bottom:auto;
-  width:min(100%,280px);
+  width:min(96vw,560px);
   height:auto;
   min-height:0;
   margin:0;
-  gap:0;
+  gap:8px;
   z-index:6;
   transform:translate(-50%,clamp(94px,13vh,152px));
 }
-body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-actions-wrap,
 body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-bottom{display:none!important}
 body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-state-row{
   position:relative;
   left:auto;
   top:auto;
   transform:none;
-  width:100%;
+  width:min(100%,260px);
   margin:0 auto;
 }
 body.is-minimal .side-rail{opacity:0;pointer-events:none}
@@ -229,7 +228,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .alarm-display-toggle .scenario-mode-toggle{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.14));color:rgba(255,255,255,.92);border-color:rgba(255,255,255,.28);box-shadow:0 10px 28px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.3)}
 .stopwatch-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--stopwatch-panel-height);display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:12px;justify-items:stretch;align-self:end}
 .slot-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--slot-panel-height);display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;justify-items:stretch;align-self:end}
-.slot-panel.is-state-only .slot-actions-wrap,.slot-panel.is-state-only .slot-bottom{display:none}
+.slot-panel.is-state-only .slot-bottom{display:none}
 .slot-state-row{position:absolute;left:50%;top:0;display:flex;justify-content:center;width:min(100%,240px);transform:translate(-50%,clamp(-156px,-18vh,-108px));z-index:4;pointer-events:none}
 .stopwatch-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}
 .slot-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}

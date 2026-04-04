@@ -4575,6 +4575,23 @@
     els.dockSlotResetBtn.title = isSlot ? "Reset slot progress and feed logs" : "";
   }
 
+  function bindSlotReelTapHandlers() {
+    const pairs = [
+      [els.slotReelLeft, 0],
+      [els.slotReelCenter, 1],
+      [els.slotReelRight, 2],
+    ];
+    pairs.forEach(([node, index]) => {
+      if (!node || node.dataset.slotTapBound === "1") return;
+      node.dataset.slotTapBound = "1";
+      node.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        stopSlotReelByIndex(index);
+      });
+    });
+  }
+
   function setClockMeridiem(meridiem = "") {
     if (!els.clockMeridiem) return;
     const supportsMeridiem = state.type === "clock" || alarmUsesClockDisplay();
@@ -6513,6 +6530,7 @@
     els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
     els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
     els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
+    bindSlotReelTapHandlers();
     els.slotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.stagePauseBtn?.addEventListener("click", () => {
       if (runtime.phase === "running") {
@@ -7683,6 +7701,7 @@
     els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
     els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
     els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
+    bindSlotReelTapHandlers();
     els.slotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.stagePauseBtn?.addEventListener("click", () => {
       if (runtime.phase === "running") {
