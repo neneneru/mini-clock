@@ -3540,18 +3540,18 @@
   function positionClockMeridiem() {
     if (!els.clockMeridiem || els.clockMeridiem.hidden || !timerFrame || !els.timerText) return;
     const frameRect = timerFrame.getBoundingClientRect();
-    const textRect = clockMeridiemAnchorRect() || els.timerText.getBoundingClientRect();
-    const leadingRect = clockMeridiemLeadingCharRect() || textRect;
+    const textRect = els.timerText.getBoundingClientRect();
     if (frameRect.width < 2 || textRect.width < 2 || textRect.height < 2) return;
     const styleId = clockAmPmStyleOptionById(state.clock?.ampmStyle).id;
     const isMobile = isMobileUiMode();
-    const gap = Math.max(12, textRect.height * 0.14);
-    const badgeGap = Math.max(18, textRect.height * 0.2);
     const inlineSize = Math.max(12, textRect.height * 0.16);
     const badgeSize = Math.max(11, textRect.height * 0.12);
     const slantedSize = Math.max(28, textRect.height * 0.34);
     const isBefore = styleId.startsWith("before");
+    const isAfter = styleId.startsWith("after");
     const isBadge = styleId.includes("badge");
+    const isSlanted = styleId === "slanted";
+    const isBeforeInline = styleId === "before-inline";
     let fontSize = styleId === "slanted" ? slantedSize : (isBadge ? badgeSize : inlineSize);
 
     els.clockMeridiem.style.fontSize = `${fontSize}px`;
@@ -3571,38 +3571,96 @@
         height = Math.max(16, els.clockMeridiem.offsetHeight || 20);
       }
     }
-    let left = textRect.right - frameRect.left + gap + width * 0.5;
-    let top = textRect.top - frameRect.top + textRect.height * 0.5;
+    const widthRatio = textRect.width / Math.max(frameRect.width, 1);
+    const sizeRatio = clamp((state.size - 50) / 150, 0, 1);
+    const crowdRatio = clamp((widthRatio - (isMobile ? 0.42 : 0.48)) / (isMobile ? 0.46 : 0.4), 0, 1);
+    const stress = Math.max(sizeRatio, crowdRatio);
 
-    if (styleId === "slanted") {
-      left = textRect.left - frameRect.left + width * 0.32;
-      top = textRect.top - frameRect.top + Math.min(textRect.height * 0.2, 24);
-    } else if (isBadge) {
-      left = isBefore
-        ? textRect.left - frameRect.left - badgeGap - width * 0.5
-        : textRect.right - frameRect.left + badgeGap + width * 0.5;
-    } else if (isBefore) {
-      left = textRect.left - frameRect.left - gap - width * 0.5;
+    const sideBase = Math.max(isBadge ? 18 : 14, textRect.height * (isBadge ? 0.22 : 0.17));
+    const sideBoost = (isMobile ? 1.28 : 1) * (isBadge ? width * 0.18 : width * 0.12)
+      + stress * Math.max(18, textRect.height * (isMobile ? 0.32 : 0.24));
+    const sideGap = sideBase + sideBoost;
+    const centerY = textRect.top - frameRect.top + textRect.height * 0.5;
+    let left = textRect.right - frameRect.left + sideGap + width * 0.5;
+    let top = centerY;
+
+    if (isBefore) {
+      left = textRect.left - frameRect.left - sideGap - width * 0.5;
     }
 
+    if (isMobile && isBeforeInline) {
+      top -= Math.max(8, textRect.height * (0.16 + stress * 0.3));
+    } else if (isMobile && isBefore && isBadge) {
+      top -= Math.max(4, textRect.height * (0.06 + stress * 0.16));
+    } else if (isMobile && isAfter && isBadge) {
+      top -= Math.max(2, textRect.height * (0.04 + stress * 0.1));
+    }
+
+    if (isSlanted) {
+      left = textRect.left - frameRect.left + width * (isMobile ? 0.5 : 0.32);
+      top = textRect.top - frameRect.top + Math.min(textRect.height * (isMobile ? 0.02 : 0.2), isMobile ? 4 : 24);
+      if (isMobile) {
+        top -= Math.max(6, textRect.height * 0.08);
+      }
+    }
+
+    let minLeft = width * 0.5 + framePadding;
+    let maxLeft = frameRect.width - width * 0.5 - framePadding;
+    let minTop = height * 0.5 + framePadding;
+    let maxTop = frameRect.height - height * 0.5 - framePadding;
     if (isMobile) {
-      const mobileTopLift = Math.max(4, leadingRect.height * 0.09);
-      const mobileShift = Math.max(4, leadingRect.width * 0.18);
-      left = leadingRect.left - frameRect.left + width * 0.5;
-      top = leadingRect.top - frameRect.top - mobileTopLift;
-      if (styleId.startsWith("after")) {
-        left += mobileShift + leadingRect.width * 0.42;
-      } else if (styleId.startsWith("before")) {
-        left -= leadingRect.width * 0.12;
+      if (isBefore) minLeft = Math.min(minLeft, -width * 0.45);
+      if (isAfter) maxLeft = Math.max(maxLeft, frameRect.width + width * 0.45);
+      minTop = Math.min(minTop, -height * 0.3);
+    }
+    left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
+    top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
+
+    const localTextRect = {
+      left: textRect.left - frameRect.left,
+      top: textRect.top - frameRect.top,
+      right: textRect.right - frameRect.left,
+      bottom: textRect.bottom - frameRect.top,
+      width: textRect.width,
+      height: textRect.height,
+    };
+    const localMeridiemRect = () => ({
+      left: left - width * 0.5,
+      top: top - height * 0.5,
+      right: left + width * 0.5,
+      bottom: top + height * 0.5,
+      width,
+      height,
+    });
+    const overlapPadding = isMobile ? 5 : 3;
+    if (rectsIntersect(localMeridiemRect(), localTextRect, overlapPadding)) {
+      const extraShift = Math.max(width * (isBadge ? 0.7 : 0.62), textRect.height * (isMobile ? 0.62 : 0.48))
+        + stress * Math.max(10, textRect.height * 0.24);
+      if (isBefore) {
+        left = localTextRect.left - extraShift;
+      } else if (isAfter) {
+        left = localTextRect.right + extraShift;
       }
-      if (styleId === "slanted") {
-        left = leadingRect.left - frameRect.left + width * 0.58;
-        top = leadingRect.top - frameRect.top + Math.min(leadingRect.height * 0.08, 8);
+      if (isBeforeInline) {
+        top -= Math.max(height * 0.26, textRect.height * (0.2 + stress * 0.22));
+      } else if (isBefore) {
+        top -= Math.max(height * 0.1, textRect.height * (0.08 + stress * 0.14));
       }
+      left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
     }
 
-    left = clamp(left, width * 0.5 + framePadding, frameRect.width - width * 0.5 - framePadding);
-    top = clamp(top, height * 0.5 + framePadding, frameRect.height - height * 0.5 - framePadding);
+    if (rectsIntersect(localMeridiemRect(), localTextRect, overlapPadding)) {
+      if (isBefore) {
+        left = localTextRect.left - Math.max(width * 0.9, textRect.height * (0.78 + stress * 0.36));
+        top -= Math.max(height * 0.18, textRect.height * (isBeforeInline ? 0.22 : 0.12));
+      } else if (isAfter) {
+        left = localTextRect.right + Math.max(width * 0.9, textRect.height * (0.74 + stress * 0.34));
+        top -= Math.max(height * 0.1, textRect.height * 0.06);
+      }
+      left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
+    }
 
     els.clockMeridiem.style.left = `${left}px`;
     els.clockMeridiem.style.top = `${top}px`;
