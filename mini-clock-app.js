@@ -3609,6 +3609,30 @@
     const maxTop = frameRect.height - height * 0.5 - framePadding;
     left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
     top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
+
+    const localTextRect = {
+      left: textRect.left - frameRect.left,
+      top: textRect.top - frameRect.top,
+      right: textRect.right - frameRect.left,
+      bottom: textRect.bottom - frameRect.top,
+      width: textRect.width,
+      height: textRect.height,
+    };
+    const localToggleRect = () => ({
+      left: left - width * 0.5,
+      top: top - height * 0.5,
+      right: left + width * 0.5,
+      bottom: top + height * 0.5,
+      width,
+      height,
+    });
+
+    if (rectsIntersect(localToggleRect(), localTextRect, isMobile ? 3 : 2)) {
+      const aboveGap = Math.max(gapY, localTextRect.height * (isMobile ? 0.2 : 0.16));
+      const preferredTop = localTextRect.top - aboveGap - height * 0.5;
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, minTop, maxTop);
+    }
+
     els.alarmDisplayToggle.style.left = `${left}px`;
     els.alarmDisplayToggle.style.top = `${top}px`;
   }
