@@ -5,8 +5,10 @@
     topbar: document.querySelector(".topbar"),
     sideRail: document.querySelector(".side-rail"),
     stage: document.querySelector(".stage"),
+    stageTimer: $("stageTimer"),
     timerButton: $("timerButton"),
     timerText: $("timerText"),
+    slotCenter: $("slotCenter"),
     clockMeridiem: $("clockMeridiem"),
     phaseSplash: $("phaseSplash"),
     statusPill: $("statusPill"),
@@ -65,13 +67,13 @@
     stopwatchWorstChip: $("stopwatchWorstChip"),
     stopwatchLaps: $("stopwatchLaps"),
     slotPanel: $("slotPanel"),
+    slotStateRow: $("slotStateRow"),
     slotStartBtn: $("slotStartBtn"),
     slotStopLeftBtn: $("slotStopLeftBtn"),
     slotStopCenterBtn: $("slotStopCenterBtn"),
     slotStopRightBtn: $("slotStopRightBtn"),
-    slotSpeedChip: $("slotSpeedChip"),
+    slotResetBtn: $("slotResetBtn"),
     slotStateChip: $("slotStateChip"),
-    slotAssistChip: $("slotAssistChip"),
     slotReelLeft: $("slotReelLeft"),
     slotReelCenter: $("slotReelCenter"),
     slotReelRight: $("slotReelRight"),
@@ -79,6 +81,15 @@
     slotReelValueCenter: $("slotReelValueCenter"),
     slotReelValueRight: $("slotReelValueRight"),
     slotFeed: $("slotFeed"),
+    slotPointValue: $("slotPointValue"),
+    slotStarValue: $("slotStarValue"),
+    slotHeartValue: $("slotHeartValue"),
+    slotSpinValue: $("slotSpinValue"),
+    slotLastBigValue: $("slotLastBigValue"),
+    slotStreakValue: $("slotStreakValue"),
+    slotStreakMeta: $("slotStreakMeta"),
+    slotQuestValue: $("slotQuestValue"),
+    slotQuestCard: $("slotQuestCard"),
     alarmBoard: $("alarmBoard"),
     alarmCards: $("alarmCards"),
     alarmDisplayToggle: $("alarmDisplayToggle"),
@@ -89,6 +100,9 @@
     alarmAlertMeta: $("alarmAlertMeta"),
     alarmSnoozeBtn: $("alarmSnoozeBtn"),
     alarmDismissBtn: $("alarmDismissBtn"),
+    slotResetOverlay: $("slotResetOverlay"),
+    slotResetCancelBtn: $("slotResetCancelBtn"),
+    slotResetConfirmBtn: $("slotResetConfirmBtn"),
     stageStart: document.querySelector(".stage-start"),
     sequencePanel: $("sequencePanel"),
     sequenceGuide: $("sequenceGuide"),
@@ -139,6 +153,12 @@
     settingsSoundVolume: $("settingsSoundVolume"),
     settingsSoundVolumeValue: $("settingsSoundVolumeValue"),
     settingsSoundPreviewBtn: $("settingsSoundPreviewBtn"),
+    settingsCloudStatus: $("settingsCloudStatus"),
+    settingsCloudUser: $("settingsCloudUser"),
+    settingsCloudAlias: $("settingsCloudAlias"),
+    settingsCloudMagicLinkBtn: $("settingsCloudMagicLinkBtn"),
+    settingsCloudSignOutBtn: $("settingsCloudSignOutBtn"),
+    settingsCloudLeaderboard: $("settingsCloudLeaderboard"),
     settingsClockAmPmStyle: $("settingsClockAmPmStyle"),
     settingsClockAmPmPicker: $("settingsClockAmPmPicker"),
     settingsClockAmPmButton: $("settingsClockAmPmButton"),
@@ -171,19 +191,39 @@
     { id: "Bebas Neue", label: "Bebas Neue", stack: "'Bebas Neue',sans-serif" },
   ];
 
-  const TYPE_OPTIONS = [
-    { value: "countdown", label: "COUNTDOWN", desc: "One clean deadline" },
-    { value: "countup", label: "COUNT UP", desc: "Rise toward a goal" },
-    { value: "clock", label: "CLOCK", desc: "Live local and world time" },
-    { value: "alarm", label: "ALARM", desc: "Alert, message, and snooze" },
-    { value: "stopwatch", label: "STOPWATCH", desc: "Pure elapsed time" },
-    { value: "slot", label: "SLOT", desc: "Stop three reels and chase BIG" },
-    { value: "pomodoro", label: "POMODORO", desc: "Focus and breaks" },
-    { value: "loop", label: "LOOP", desc: "Repeat by count" },
-    { value: "interval", label: "INTERVAL", desc: "Warm up and repeat" },
-    { value: "tabata", label: "TABATA", desc: "20 / 10 preset" },
-    { value: "scenario", label: "SCENARIO", desc: "Custom multi-step" },
+  const TYPE_CATEGORY_OPTIONS = [
+    { id: "time", label: "TIME" },
+    { id: "focus", label: "FOCUS" },
+    { id: "play", label: "PLAY" },
   ];
+  const TYPE_OPTIONS = [
+    { value: "countdown", label: "COUNTDOWN", desc: "One clean deadline", category: "time" },
+    { value: "countup", label: "COUNT UP", desc: "Rise toward a goal", category: "time" },
+    { value: "clock", label: "CLOCK", desc: "Live local and world time", category: "time" },
+    { value: "alarm", label: "ALARM", desc: "Alert, message, and snooze", category: "time" },
+    { value: "stopwatch", label: "STOPWATCH", desc: "Pure elapsed time", category: "time" },
+    { value: "slot", label: "SLOT", desc: "Stop three reels and chase BIG", category: "play" },
+    { value: "pomodoro", label: "POMODORO", desc: "Focus and breaks", category: "focus" },
+    { value: "loop", label: "LOOP", desc: "Repeat by count", category: "focus" },
+    { value: "interval", label: "INTERVAL", desc: "Warm up and repeat", category: "focus" },
+    { value: "tabata", label: "TABATA", desc: "20 / 10 preset", category: "focus" },
+    { value: "scenario", label: "SCENARIO", desc: "Custom multi-step", category: "focus" },
+  ];
+  const TYPE_CATEGORY_ORDER = new Map(TYPE_CATEGORY_OPTIONS.map((category, index) => [category.id, index]));
+  function normalizeTypeSortLabel(label) {
+    return String(label || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+  const TYPE_OPTIONS_SORTED = [...TYPE_OPTIONS].sort((a, b) => {
+    const categoryDiff = (TYPE_CATEGORY_ORDER.get(a.category) ?? 999) - (TYPE_CATEGORY_ORDER.get(b.category) ?? 999);
+    if (categoryDiff) return categoryDiff;
+    return normalizeTypeSortLabel(a.label).localeCompare(normalizeTypeSortLabel(b.label), "en", { sensitivity: "base", numeric: true });
+  });
+  const TYPE_OPTION_BY_VALUE = new Map(TYPE_OPTIONS_SORTED.map(option => [option.value, option]));
+  const TYPE_OPTIONS_BY_CATEGORY = TYPE_CATEGORY_OPTIONS.map(category => ({
+    id: category.id,
+    label: category.label,
+    options: TYPE_OPTIONS_SORTED.filter(option => option.category === category.id),
+  })).filter(group => group.options.length > 0);
 
   const UNIT_OPTIONS = [
     { value: "seconds", label: "SECONDS" },
@@ -463,6 +503,8 @@
   const STORAGE_KEY = "mini-clock:settings:v1";
   const HISTORY_LIMIT = 120;
   const PRESET_LIMIT = 64;
+  const CLOUD_SYNC_STATE_TABLE = "mini_clock_user_state";
+  const CLOUD_SYNC_LEADERBOARD_TABLE = "mini_clock_leaderboard";
 
   const DEFAULT_STATE = {
     uiVisible: true,
@@ -526,6 +568,16 @@
       reelCount: 3,
       reelDigits: 10,
     },
+    slotProgress: {
+      points: 0,
+      stars: 0,
+      hearts: 0,
+      totalSpins: 0,
+      lastBigSpin: 0,
+      bigStreak: 0,
+      bigStreakStartSpin: 0,
+      bestBigStreak: 0,
+    },
     pomodoro: {
       focusSeconds: 1500,
       shortBreakSeconds: 300,
@@ -567,6 +619,11 @@
       liveClock: {
         enabled: false,
       },
+      cloud: {
+        url: "",
+        anonKey: "",
+        alias: "",
+      },
     },
   };
   const settingsUi = {
@@ -596,10 +653,39 @@
       stopTimes: [],
       feed: [],
       reachActive: false,
+      effectMode: "",
+      effectUntil: 0,
+      renderRaf: 0,
       spinStartedAt: 0,
       spinId: 0,
+      questDigit: 7,
+      targetSpin: 1,
     },
   };
+  const cloudSync = {
+    client: null,
+    clientUrl: "",
+    clientKey: "",
+    session: null,
+    user: null,
+    status: "LOCAL ONLY",
+    detail: "Sign in with Google to start cloud sync.",
+    busy: false,
+    leaderboard: [],
+    lastSyncedAt: "",
+    authSubscription: null,
+  };
+  const CLOUD_RUNTIME_CONFIG = (() => {
+    const source = window.MINI_CLOCK_CLOUD_CONFIG && typeof window.MINI_CLOCK_CLOUD_CONFIG === "object"
+      ? window.MINI_CLOCK_CLOUD_CONFIG
+      : {};
+    const normalizeText = value => String(value ?? "").trim();
+    const normalizeUrl = value => normalizeText(value).replace(/\/+$/, "");
+    return {
+      url: normalizeUrl(source.url || window.MINI_CLOCK_SUPABASE_URL || ""),
+      anonKey: normalizeText(source.anonKey || window.MINI_CLOCK_SUPABASE_ANON_KEY || ""),
+    };
+  })();
   let audioContext = null;
   let soundPreviewTimer = 0;
   let soundPreviewSignature = "";
@@ -632,6 +718,10 @@
   let appliedScalePercent = normalizeScaleValue(DEFAULT_STATE.size);
   let adaptiveScaleSignature = "";
   let minimalRestoreClickBlockUntil = 0;
+  let cloudAutoSyncTimer = 0;
+  let cloudSuppressAutoPush = false;
+  let slotVisualRefreshTimer = 0;
+  let slotResetConfirmOpen = false;
 
   const picker = {
     kind: null,
@@ -657,6 +747,7 @@
   };
 
   const timerFrame = els.timerButton.parentElement;
+  const stageTimer = els.stageTimer || timerFrame.closest(".stage-timer");
   const uiToggleGlyph = els.uiToggle?.querySelector(".toggle-glyph") || els.uiToggle;
   const SEQUENCE_DETAIL_TYPES = new Set(["pomodoro", "loop", "interval", "tabata", "scenario"]);
 
@@ -828,6 +919,7 @@
         reelCount: 3,
         reelDigits: 10,
       },
+      slotProgress: normalizeSlotProgress(source.slotProgress),
       pomodoro: { ...source.pomodoro },
       loop: { ...source.loop },
       interval: { ...source.interval },
@@ -869,6 +961,7 @@
       reelCount: 3,
       reelDigits: 10,
     };
+    state.slotProgress = normalizeSlotProgress(next.slotProgress);
     state.pomodoro = { ...next.pomodoro };
     state.loop = { ...next.loop };
     state.interval = { ...next.interval };
@@ -951,7 +1044,7 @@
     const sheet = els.pickerOverlay.querySelector(".picker-sheet");
     if (!sheet) return;
     const sheetRect = sheet.getBoundingClientRect();
-    const targets = [els.timerText, els.stageStart, els.stopwatchPanel, els.slotPanel, els.sequencePanel, els.alarmBoard];
+    const targets = [els.timerText, els.slotCenter, els.stageStart, els.stopwatchPanel, els.slotPanel, els.sequencePanel, els.alarmBoard];
     const overlap = targets.some(target => {
       if (!target || target.hidden) return false;
       const rect = target.getBoundingClientRect();
@@ -998,7 +1091,7 @@
   }
 
   function normalizeType(type) {
-    return TYPE_OPTIONS.some(option => option.value === type) ? type : "countdown";
+    return TYPE_OPTION_BY_VALUE.has(type) ? type : "countdown";
   }
 
   function normalizeUnit(unit) {
@@ -1280,6 +1373,25 @@
     return `${speed} · ${assist}`;
   }
 
+  function normalizeSlotProgress(progress) {
+    const source = progress && typeof progress === "object" ? progress : {};
+    const totalSpins = clamp(Math.floor(Number(source.totalSpins) || 0), 0, 999999999);
+    const lastBigSpin = clamp(Math.floor(Number(source.lastBigSpin) || 0), 0, totalSpins);
+    const bigStreak = clamp(Math.floor(Number(source.bigStreak) || 0), 0, totalSpins);
+    const bigStreakStartSpin = clamp(Math.floor(Number(source.bigStreakStartSpin) || 0), 0, totalSpins);
+    const bestBigStreak = clamp(Math.floor(Number(source.bestBigStreak) || 0), 0, totalSpins);
+    return {
+      points: clamp(Math.floor(Number(source.points) || 0), 0, 999999999),
+      stars: clamp(Math.floor(Number(source.stars) || 0), 0, 999999999),
+      hearts: clamp(Math.floor(Number(source.hearts) || 0), 0, 999999999),
+      totalSpins,
+      lastBigSpin,
+      bigStreak,
+      bigStreakStartSpin,
+      bestBigStreak,
+    };
+  }
+
   function alarmRepeatOptionById(id) {
     const value = String(id || "");
     return ALARM_REPEAT_OPTIONS.find(option => option.id === value) || ALARM_REPEAT_OPTIONS[2];
@@ -1533,6 +1645,17 @@
     };
   }
 
+  function sanitizeCloudSettings(source) {
+    const raw = source && typeof source === "object" ? source : {};
+    const normalizeText = value => String(value ?? "").trim();
+    const normalizeUrl = value => normalizeText(value).replace(/\/+$/, "");
+    return {
+      url: normalizeUrl(raw.url),
+      anonKey: normalizeText(raw.anonKey),
+      alias: normalizeText(raw.alias).slice(0, 24),
+    };
+  }
+
   function soundModeLabel(sound = appStore.future.sound) {
     const safe = sanitizeSoundSettings(sound);
     const icon = safe.enabled ? "♪" : "INF";
@@ -1700,6 +1823,54 @@
     };
   }
 
+  function sanitizeSlotFeedEntry(entry) {
+    if (!entry || typeof entry !== "object") return null;
+    const safeValues = (Array.isArray(entry.values) ? entry.values : [0, 0, 0])
+      .slice(0, 3)
+      .map(value => clamp(Math.floor(Number(value) || 0), 0, 9));
+    while (safeValues.length < 3) safeValues.push(0);
+    return {
+      spin: Math.max(1, Math.floor(Number(entry.spin) || 1)),
+      values: safeValues,
+      kind: ["big", "reach", "miss"].includes(String(entry.kind)) ? String(entry.kind) : "miss",
+      just: entry.just === true,
+      starHit: entry.starHit === true || entry.forecastHit === true,
+      heartHit: entry.heartHit === true || entry.questHit === true,
+      label: String(entry.label || "").trim(),
+      detail: String(entry.detail || "").trim(),
+      timestamp: Math.max(0, Math.floor(Number(entry.timestamp) || Date.now())),
+    };
+  }
+
+  function buildRuntimeSnapshot() {
+    ensureSlotRuntimeState();
+    return {
+      slot: {
+        feed: runtime.slot.feed.slice(0, 120).map(sanitizeSlotFeedEntry).filter(Boolean),
+        questDigit: Number.isInteger(runtime.slot.questDigit) ? clamp(runtime.slot.questDigit, 0, 9) : 7,
+        targetSpin: clamp(Math.floor(Number(runtime.slot.targetSpin) || 1), 1, 999999999),
+        spinId: clamp(Math.floor(Number(runtime.slot.spinId) || 0), 0, 999999999),
+      },
+    };
+  }
+
+  function sanitizeRuntimeSnapshot(snapshot) {
+    const raw = snapshot && typeof snapshot === "object" ? snapshot : {};
+    const slot = raw.slot && typeof raw.slot === "object" ? raw.slot : {};
+    return {
+      slot: {
+        feed: Array.isArray(slot.feed)
+          ? slot.feed.map(sanitizeSlotFeedEntry).filter(Boolean).slice(0, 120)
+          : [],
+        questDigit: Number.isInteger(slot.questDigit)
+          ? clamp(slot.questDigit, 0, 9)
+          : (Number.isInteger(slot.forecastDigit) ? clamp(slot.forecastDigit, 0, 9) : 7),
+        targetSpin: clamp(Math.floor(Number(slot.targetSpin) || 1), 1, 999999999),
+        spinId: clamp(Math.floor(Number(slot.spinId) || 0), 0, 999999999),
+      },
+    };
+  }
+
   function hydrateStore() {
     const stored = parseStoredJSON((() => {
       try {
@@ -1753,6 +1924,10 @@
         ...DEFAULT_STATE.slot,
         ...(stored.state?.slot || {}),
       },
+      slotProgress: {
+        ...DEFAULT_STATE.slotProgress,
+        ...(stored.state?.slotProgress || {}),
+      },
       scenario: cloneScenario(stored.state?.scenario || DEFAULT_SCENARIO),
     });
     Object.assign(state, nextState);
@@ -1770,7 +1945,13 @@
       liveClock: {
         enabled: Boolean(stored.future?.liveClock?.enabled),
       },
+      cloud: sanitizeCloudSettings(stored.future?.cloud),
     };
+    const runtimeSnapshot = sanitizeRuntimeSnapshot(stored.runtime);
+    runtime.slot.feed = runtimeSnapshot.slot.feed;
+    runtime.slot.questDigit = runtimeSnapshot.slot.questDigit;
+    runtime.slot.targetSpin = runtimeSnapshot.slot.targetSpin;
+    runtime.slot.spinId = runtimeSnapshot.slot.spinId;
     settingsUi.presetType = state.type;
     return { loaded: true, hasSize: hasStoredSize, hasScaleMode: hasStoredScaleMode };
   }
@@ -1782,10 +1963,547 @@
       history: appStore.history.slice(0, HISTORY_LIMIT),
       presets: appStore.presets.slice(0, PRESET_LIMIT),
       future: appStore.future,
+      runtime: buildRuntimeSnapshot(),
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {}
+    queueCloudAutoSync("persist");
+  }
+
+  function supportsCloudSdk() {
+    return false;
+  }
+
+  function resolveCloudSettings(config = sanitizeCloudSettings(appStore.future.cloud)) {
+    const safe = sanitizeCloudSettings(config);
+    return {
+      ...safe,
+      url: CLOUD_RUNTIME_CONFIG.url || safe.url,
+      anonKey: CLOUD_RUNTIME_CONFIG.anonKey || safe.anonKey,
+    };
+  }
+
+  function cloudConfigReady(config = sanitizeCloudSettings(appStore.future.cloud)) {
+    const resolved = resolveCloudSettings(config);
+    return Boolean(resolved.url && resolved.anonKey);
+  }
+
+  function cloudStatusLabel() {
+    if (!supportsCloudSdk()) return "CLOUD OFF";
+    if (!cloudConfigReady()) return "LOCAL ONLY";
+    if (cloudSync.user) return cloudIsAnonymousUser(cloudSync.user) ? "GUEST" : "SIGNED IN";
+    return "CONFIGURED";
+  }
+
+  function cloudIsAnonymousUser(user = cloudSync.user) {
+    const safe = user && typeof user === "object" ? user : null;
+    if (!safe) return false;
+    return safe.is_anonymous === true || safe.app_metadata?.provider === "anonymous";
+  }
+
+  function generateCloudAlias() {
+    const alphabet = "0123456789abcdefghijklmnopqrstuvwxyz";
+    const chars = [];
+    if (window.crypto?.getRandomValues) {
+      const bytes = new Uint8Array(10);
+      window.crypto.getRandomValues(bytes);
+      for (let i = 0; i < bytes.length; i += 1) {
+        chars.push(alphabet[bytes[i] % alphabet.length]);
+      }
+    } else {
+      for (let i = 0; i < 10; i += 1) {
+        chars.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
+      }
+    }
+    const seed = (Date.now().toString(36) + chars.join("")).slice(-9);
+    return `u${seed}`;
+  }
+
+  function ensureCloudAlias({ persist = true } = {}) {
+    const safe = sanitizeCloudSettings(appStore.future.cloud);
+    if (safe.alias) return safe.alias;
+    const alias = generateCloudAlias();
+    appStore.future.cloud = sanitizeCloudSettings({
+      ...appStore.future.cloud,
+      alias,
+    });
+    assignInputValue(els.settingsCloudAlias, alias);
+    if (persist) persistStore();
+    return alias;
+  }
+
+  function mergeCloudSettingsFromInputs({ persist = true } = {}) {
+    const currentAlias = sanitizeCloudSettings(appStore.future.cloud).alias;
+    const typedAlias = String(els.settingsCloudAlias?.value || "").trim();
+    const isEditingAlias = document.activeElement === els.settingsCloudAlias;
+    const alias = typedAlias || currentAlias || generateCloudAlias();
+    const next = sanitizeCloudSettings({
+      ...appStore.future.cloud,
+      alias: typedAlias || (isEditingAlias ? "" : alias),
+    });
+    appStore.future.cloud = next;
+    if (!typedAlias && !isEditingAlias) assignInputValue(els.settingsCloudAlias, alias);
+    if (persist) persistStore();
+    return next;
+  }
+
+  function queueCloudAutoSync(reason = "auto") {
+    if (cloudSuppressAutoPush) return;
+    if (!cloudSync.user || cloudSync.busy) return;
+    if (!cloudConfigReady()) return;
+    if (cloudAutoSyncTimer) {
+      clearTimeout(cloudAutoSyncTimer);
+    }
+    cloudAutoSyncTimer = setTimeout(() => {
+      cloudAutoSyncTimer = 0;
+      pushCloudSnapshot({ quiet: true, auto: true, reason });
+    }, 1600);
+  }
+
+  function cloudSignedInLabel() {
+    const alias = cloudScoreAlias();
+    return cloudIsAnonymousUser(cloudSync.user) ? `Guest · ${alias}` : `User · ${alias}`;
+  }
+
+  function cloudAliasFallback() {
+    return ensureCloudAlias({ persist: false });
+  }
+
+  function setCloudBusy(flag) {
+    cloudSync.busy = Boolean(flag);
+    renderSettingsCloudControls();
+  }
+
+  function assignInputValue(input, value) {
+    if (!(input instanceof HTMLInputElement)) return;
+    if (document.activeElement === input) return;
+    input.value = value;
+  }
+
+  function buildCloudSnapshot() {
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      state: cloneState(state),
+      history: appStore.history.slice(0, HISTORY_LIMIT),
+      presets: appStore.presets.slice(0, PRESET_LIMIT),
+      future: {
+        sound: sanitizeSoundSettings(appStore.future.sound),
+        theme: {
+          id: String(appStore.future.theme?.id || "Soft Bloom"),
+        },
+        liveClock: {
+          enabled: Boolean(appStore.future.liveClock?.enabled),
+        },
+      },
+      runtime: buildRuntimeSnapshot(),
+    };
+  }
+
+  function applyCloudSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") return false;
+    const localCloudSettings = sanitizeCloudSettings(appStore.future.cloud);
+    if (snapshot.state && typeof snapshot.state === "object") {
+      replaceState(snapshot.state);
+    }
+    appStore.history = Array.isArray(snapshot.history)
+      ? snapshot.history.map(sanitizeHistoryEntry).filter(Boolean).slice(0, HISTORY_LIMIT)
+      : [];
+    appStore.presets = Array.isArray(snapshot.presets)
+      ? snapshot.presets.map(sanitizePreset).filter(Boolean).slice(0, PRESET_LIMIT)
+      : [];
+    appStore.future = {
+      sound: sanitizeSoundSettings(snapshot.future?.sound),
+      theme: {
+        id: String(snapshot.future?.theme?.id || appStore.future.theme?.id || "Soft Bloom"),
+      },
+      liveClock: {
+        enabled: Boolean(snapshot.future?.liveClock?.enabled),
+      },
+      cloud: localCloudSettings,
+    };
+    const runtimeSnapshot = sanitizeRuntimeSnapshot(snapshot.runtime);
+    runtime.slot.feed = runtimeSnapshot.slot.feed;
+    runtime.slot.questDigit = runtimeSnapshot.slot.questDigit;
+    runtime.slot.targetSpin = runtimeSnapshot.slot.targetSpin;
+    runtime.slot.spinId = runtimeSnapshot.slot.spinId;
+    settingsUi.presetType = state.type;
+    resetToIdleState();
+    updateAllUI();
+    persistStore();
+    renderSettingsUI();
+    return true;
+  }
+
+  async function ensureCloudClient({ forceRecreate = false } = {}) {
+    const config = resolveCloudSettings(appStore.future.cloud);
+    if (!supportsCloudSdk()) return null;
+    if (!cloudConfigReady(config)) return null;
+    const sameConfig = cloudSync.client
+      && cloudSync.clientUrl === config.url
+      && cloudSync.clientKey === config.anonKey;
+    if (!forceRecreate && sameConfig) return cloudSync.client;
+    if (cloudSync.authSubscription?.unsubscribe) {
+      cloudSync.authSubscription.unsubscribe();
+      cloudSync.authSubscription = null;
+    }
+    cloudSync.client = window.supabase.createClient(config.url, config.anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+    cloudSync.clientUrl = config.url;
+    cloudSync.clientKey = config.anonKey;
+    const { data } = cloudSync.client.auth.onAuthStateChange((event, session) => {
+      cloudSync.session = session || null;
+      cloudSync.user = session?.user || null;
+      if (event === "SIGNED_IN") {
+        const guest = cloudIsAnonymousUser(session?.user || null);
+        cloudSync.status = guest ? "GUEST" : "SIGNED IN";
+        cloudSync.detail = guest
+          ? "Guest identity ready. Sign in with Google anytime."
+          : "Signed in with Google. Syncing...";
+        pullCloudSnapshot({ quiet: true, auto: true });
+        fetchCloudLeaderboard({ quiet: true });
+      } else if (event === "SIGNED_OUT") {
+        cloudSync.status = "SIGNED OUT";
+        cloudSync.detail = "Signed out from cloud.";
+      }
+      renderSettingsCloudControls();
+    });
+    cloudSync.authSubscription = data?.subscription || null;
+    return cloudSync.client;
+  }
+
+  async function refreshCloudSession() {
+    const client = await ensureCloudClient();
+    if (!client) {
+      cloudSync.session = null;
+      cloudSync.user = null;
+      renderSettingsCloudControls();
+      return null;
+    }
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      cloudSync.session = null;
+      cloudSync.user = null;
+      cloudSync.status = "AUTH ERROR";
+      cloudSync.detail = String(error.message || "Failed to get session.");
+      renderSettingsCloudControls();
+      return null;
+    }
+    cloudSync.session = data?.session || null;
+    cloudSync.user = data?.session?.user || null;
+    renderSettingsCloudControls();
+    return cloudSync.session;
+  }
+
+  async function ensureCloudIdentity({ quiet = false } = {}) {
+    const client = await ensureCloudClient();
+    if (!client) return null;
+    const session = await refreshCloudSession();
+    if (session?.user) return session;
+    try {
+      const { data, error } = await client.auth.signInAnonymously();
+      if (error) throw error;
+      cloudSync.session = data?.session || null;
+      cloudSync.user = data?.user || data?.session?.user || null;
+      cloudSync.status = "GUEST";
+      cloudSync.detail = "Guest identity ready. Sign in with Google anytime.";
+      renderSettingsCloudControls();
+      return cloudSync.session;
+    } catch (error) {
+      cloudSync.status = "AUTH ERROR";
+      cloudSync.detail = String(error?.message || "Failed to initialize guest identity.");
+      renderSettingsCloudControls();
+      if (!quiet) {
+        showPresetToast({ kind: "error", title: "GUEST AUTH FAILED", detail: cloudSync.detail });
+      }
+      return null;
+    }
+  }
+
+  function cloudScoreAlias() {
+    const settings = sanitizeCloudSettings(appStore.future.cloud);
+    if (settings.alias) return settings.alias;
+    return cloudAliasFallback();
+  }
+
+  async function fetchCloudLeaderboard({ quiet = false } = {}) {
+    const client = await ensureCloudClient();
+    if (!client) {
+      cloudSync.leaderboard = [];
+      renderSettingsCloudControls();
+      return;
+    }
+    const { data, error } = await client
+      .from(CLOUD_SYNC_LEADERBOARD_TABLE)
+      .select("alias,points,stars,hearts,best_big_streak,updated_at")
+      .order("points", { ascending: false })
+      .order("stars", { ascending: false })
+      .order("hearts", { ascending: false })
+      .order("best_big_streak", { ascending: false })
+      .limit(20);
+    if (error) {
+      cloudSync.leaderboard = [];
+      if (!quiet) {
+        showPresetToast({
+          kind: "error",
+          title: "CLOUD ERROR",
+          detail: `Ranking table unavailable: ${error.message || "check schema"}`,
+        });
+      }
+      renderSettingsCloudControls();
+      return;
+    }
+    cloudSync.leaderboard = Array.isArray(data) ? data : [];
+    renderSettingsCloudControls();
+  }
+
+  async function signInCloudWithGoogle() {
+    const config = mergeCloudSettingsFromInputs();
+    if (!cloudConfigReady(config)) {
+      showPresetToast({ kind: "error", title: "CLOUD CONFIG", detail: "Cloud auth is not configured in this app build." });
+      return;
+    }
+    const client = await ensureCloudClient({ forceRecreate: true });
+    if (!client) {
+      showPresetToast({ kind: "error", title: "CLOUD OFF", detail: "Supabase SDK unavailable." });
+      return;
+    }
+    setCloudBusy(true);
+    try {
+      const redirectTo = window.location.href.split("#")[0];
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      });
+      if (error) throw error;
+      cloudSync.status = "GOOGLE AUTH";
+      cloudSync.detail = "Redirecting to Google sign-in…";
+      showPresetToast({ kind: "saved", title: "GOOGLE SIGN-IN", detail: "Continue in the Google auth page." });
+    } catch (error) {
+      cloudSync.status = "GOOGLE AUTH FAILED";
+      cloudSync.detail = String(error?.message || "Failed to start Google sign-in.");
+      showPresetToast({ kind: "error", title: "GOOGLE SIGN-IN FAILED", detail: cloudSync.detail });
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function pushCloudSnapshot({ quiet = false, auto = false } = {}) {
+    const config = mergeCloudSettingsFromInputs({ persist: false });
+    if (!cloudConfigReady(config)) {
+      if (!quiet) showPresetToast({ kind: "error", title: "CLOUD CONFIG", detail: "Cloud is not configured in this app build." });
+      return;
+    }
+    const client = await ensureCloudClient();
+    const session = await ensureCloudIdentity({ quiet: true });
+    if (!client || !session?.user) {
+      if (!quiet) showPresetToast({ kind: "error", title: "AUTH REQUIRED", detail: "Google or guest identity is required." });
+      return;
+    }
+    setCloudBusy(true);
+    try {
+      const { error } = await client.from(CLOUD_SYNC_STATE_TABLE).upsert({
+        user_id: session.user.id,
+        payload: buildCloudSnapshot(),
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: "user_id",
+      });
+      if (error) throw error;
+      const progress = normalizeSlotProgress(state.slotProgress);
+      const { error: rankError } = await client.from(CLOUD_SYNC_LEADERBOARD_TABLE).upsert({
+        user_id: session.user.id,
+        alias: cloudScoreAlias(),
+        points: progress.points,
+        stars: progress.stars,
+        hearts: progress.hearts,
+        best_big_streak: progress.bestBigStreak,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: "user_id",
+      });
+      if (rankError) throw rankError;
+      cloudSync.status = "SYNCED";
+      cloudSync.lastSyncedAt = new Date().toISOString();
+      cloudSync.detail = auto
+        ? `Auto-synced ${formatSettingsTimestamp(cloudSync.lastSyncedAt)}.`
+        : `Synced ${formatSettingsTimestamp(cloudSync.lastSyncedAt)}.`;
+      if (!quiet) {
+        showPresetToast({
+          kind: "saved",
+          title: "CLOUD SYNCED",
+          detail: `${appStore.presets.length} presets · ${appStore.history.length} logs · slot ${state.slotProgress.points}p`,
+        });
+      }
+      fetchCloudLeaderboard({ quiet: true });
+    } catch (error) {
+      cloudSync.status = "SYNC FAILED";
+      cloudSync.detail = String(error?.message || "Cloud sync failed.");
+      if (!quiet) showPresetToast({ kind: "error", title: "CLOUD SYNC FAILED", detail: cloudSync.detail });
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function pullCloudSnapshot({ quiet = false, auto = false } = {}) {
+    const config = mergeCloudSettingsFromInputs({ persist: false });
+    if (!cloudConfigReady(config)) {
+      if (!quiet) showPresetToast({ kind: "error", title: "CLOUD CONFIG", detail: "Cloud is not configured in this app build." });
+      return;
+    }
+    const client = await ensureCloudClient();
+    const session = await ensureCloudIdentity({ quiet: true });
+    if (!client || !session?.user) {
+      if (!quiet) showPresetToast({ kind: "error", title: "SIGN IN REQUIRED", detail: "Please sign in with Google or enable guest identity." });
+      return;
+    }
+    setCloudBusy(true);
+    try {
+      const { data, error } = await client
+        .from(CLOUD_SYNC_STATE_TABLE)
+        .select("payload,updated_at")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data?.payload) {
+        if (!quiet) showPresetToast({ kind: "error", title: "NO CLOUD DATA", detail: "No synced snapshot found yet." });
+        return;
+      }
+      const payload = data.payload;
+      if (!payload || typeof payload !== "object" || !payload.state) {
+        throw new Error("Cloud payload format is invalid.");
+      }
+      cloudSuppressAutoPush = true;
+      const applied = applyCloudSnapshot(payload);
+      cloudSuppressAutoPush = false;
+      if (!applied) throw new Error("Snapshot could not be applied.");
+      cloudSync.status = "PULLED";
+      cloudSync.lastSyncedAt = String(data.updated_at || new Date().toISOString());
+      cloudSync.detail = auto
+        ? `Synced from cloud ${formatSettingsTimestamp(cloudSync.lastSyncedAt)}.`
+        : `Pulled ${formatSettingsTimestamp(cloudSync.lastSyncedAt)}.`;
+      if (!quiet) {
+        showPresetToast({
+          kind: "saved",
+          title: "CLOUD PULLED",
+          detail: `${appStore.presets.length} presets · ${appStore.history.length} logs restored`,
+        });
+      }
+      fetchCloudLeaderboard({ quiet: true });
+    } catch (error) {
+      cloudSuppressAutoPush = false;
+      cloudSync.status = "PULL FAILED";
+      cloudSync.detail = String(error?.message || "Cloud pull failed.");
+      if (!quiet) showPresetToast({ kind: "error", title: "CLOUD PULL FAILED", detail: cloudSync.detail });
+    } finally {
+      setCloudBusy(false);
+    }
+  }
+
+  async function signOutCloud() {
+    const client = await ensureCloudClient();
+    if (!client) return;
+    if (cloudAutoSyncTimer) {
+      clearTimeout(cloudAutoSyncTimer);
+      cloudAutoSyncTimer = 0;
+    }
+    cloudSuppressAutoPush = false;
+    setCloudBusy(true);
+    try {
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
+      cloudSync.session = null;
+      cloudSync.user = null;
+      cloudSync.status = "SIGNED OUT";
+      cloudSync.detail = "Signed out from Google account.";
+      showPresetToast({ kind: "saved", title: "SIGNED OUT", detail: "Switched out from Google account." });
+    } catch (error) {
+      cloudSync.status = "SIGN OUT FAILED";
+      cloudSync.detail = String(error?.message || "Sign out failed.");
+      showPresetToast({ kind: "error", title: "SIGN OUT FAILED", detail: cloudSync.detail });
+    } finally {
+      setCloudBusy(false);
+    }
+    await ensureCloudIdentity({ quiet: true });
+  }
+
+  function renderSettingsCloudControls() {
+    if (!els.settingsCloudStatus || !els.settingsCloudUser) return;
+    const config = resolveCloudSettings(appStore.future.cloud);
+    const ensuredAlias = ensureCloudAlias({ persist: true });
+    if (config.alias !== ensuredAlias) {
+      config.alias = ensuredAlias;
+    }
+    assignInputValue(els.settingsCloudAlias, config.alias);
+    const signedIn = Boolean(cloudSync.user);
+    const guest = cloudIsAnonymousUser(cloudSync.user);
+    const hasConfig = cloudConfigReady(config);
+    const hasSdk = supportsCloudSdk();
+    const status = cloudSync.status || cloudStatusLabel();
+    const detail = cloudSync.detail
+      || (!hasSdk
+        ? "Supabase SDK unavailable."
+        : !hasConfig
+          ? "Cloud auth is not configured in this app build."
+          : signedIn
+            ? (guest ? "Guest mode syncing automatically." : "Signed in and syncing automatically.")
+            : "Configured. Sign in with Google.");
+    els.settingsCloudStatus.textContent = status;
+    els.settingsCloudUser.textContent = signedIn ? `${cloudSignedInLabel()} · ${detail}` : detail;
+    const disableByBusy = cloudSync.busy === true;
+    if (els.settingsCloudMagicLinkBtn) els.settingsCloudMagicLinkBtn.disabled = disableByBusy || !hasSdk || !hasConfig;
+    if (els.settingsCloudSignOutBtn) els.settingsCloudSignOutBtn.disabled = disableByBusy || !signedIn || guest;
+    if (els.settingsCloudLeaderboard) {
+      els.settingsCloudLeaderboard.innerHTML = "";
+      if (!cloudSync.leaderboard.length) {
+        const empty = document.createElement("div");
+        empty.className = "settings-empty";
+        empty.textContent = "No ranking data yet. Everyone appears after first sync.";
+        els.settingsCloudLeaderboard.appendChild(empty);
+      } else {
+        const fragment = document.createDocumentFragment();
+        cloudSync.leaderboard.forEach((row, index) => {
+          const card = document.createElement("div");
+          card.className = "settings-cloud-rank-item";
+          const pos = document.createElement("span");
+          pos.className = "settings-cloud-rank-pos";
+          pos.textContent = `#${index + 1}`;
+          const name = document.createElement("span");
+          name.className = "settings-cloud-rank-name";
+          name.textContent = String(row.alias || "Anonymous");
+          const score = document.createElement("span");
+          score.className = "settings-cloud-rank-score";
+          score.textContent = `${Math.max(0, Math.floor(Number(row.points) || 0))}P · ☆${Math.max(0, Math.floor(Number(row.stars) || 0))} · ♥${Math.max(0, Math.floor(Number(row.hearts) || 0))}`;
+          card.append(pos, name, score);
+          fragment.appendChild(card);
+        });
+        els.settingsCloudLeaderboard.appendChild(fragment);
+      }
+    }
+  }
+
+  async function initCloudSync() {
+    renderSettingsCloudControls();
+    if (!supportsCloudSdk()) return;
+    const config = resolveCloudSettings(appStore.future.cloud);
+    if (!cloudConfigReady(config)) return;
+    await ensureCloudClient();
+    const session = await ensureCloudIdentity({ quiet: true });
+    if (session?.user) {
+      await pullCloudSnapshot({ quiet: true, auto: true });
+    }
+    fetchCloudLeaderboard({ quiet: true });
   }
 
   function pad2(value) {
@@ -1990,11 +2708,11 @@
   }
 
   function typeLabel(type) {
-    return TYPE_OPTIONS.find(option => option.value === type)?.label || String(type || "").toUpperCase();
+    return TYPE_OPTION_BY_VALUE.get(type)?.label || String(type || "").toUpperCase();
   }
 
   function typeDesc(type) {
-    return TYPE_OPTIONS.find(option => option.value === type)?.desc || "";
+    return TYPE_OPTION_BY_VALUE.get(type)?.desc || "";
   }
 
   function typeGuide(type = state.type) {
@@ -2004,7 +2722,7 @@
       case "alarm":
         return "Arm a local alarm with repeat rules, a custom message, and snooze. Repeat sets the cadence, while Time sets the ring moment and note.";
       case "slot":
-        return "Spin three reels, stop each with timing, and aim for REACH then BIG. TIME changes reel speed, while UNIT switches assist difficulty.";
+        return "Spin three reels from the center, stop with keys 1 / 2 / 3, trigger SPIN with key 0, and RESET with key 9. Each BIG adds +1 Point, random QUEST matches add ☆, and consecutive BIG streaks add ♥.";
       case "pomodoro":
         return "Focus repeats in cycles. BREAK is the short reset between cycles, while LONG BREAK is the deeper reset after the final focus block.";
       case "loop":
@@ -2897,6 +3615,8 @@
         return "UP";
       case "clock":
         return "CLK";
+      case "alarm":
+        return "ALM";
       case "stopwatch":
         return "SW";
       case "slot":
@@ -3281,26 +4001,33 @@
     const active = normalizeType(settingsUi.presetType || state.type);
     els.settingsPresetTypeValue.textContent = typeLabel(active);
     const fragment = document.createDocumentFragment();
-    TYPE_OPTIONS.forEach(option => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "settings-type-option";
-      button.dataset.value = option.value;
-      button.setAttribute("role", "option");
-      button.setAttribute("aria-selected", option.value === active ? "true" : "false");
-      button.textContent = option.label;
-      if (option.value === active) button.classList.add("is-active");
-      button.addEventListener("click", () => {
-        closeSettingsPresetTypeMenu();
-        if (els.settingsPresetType) {
-          els.settingsPresetType.value = option.value;
-          els.settingsPresetType.dispatchEvent(new Event("change", { bubbles: true }));
-        } else {
-          settingsUi.presetType = normalizeType(option.value);
-          renderSettingsUI();
-        }
+    TYPE_OPTIONS_BY_CATEGORY.forEach(group => {
+      const heading = document.createElement("div");
+      heading.className = "settings-type-group";
+      heading.textContent = group.label;
+      heading.setAttribute("role", "presentation");
+      fragment.appendChild(heading);
+      group.options.forEach(option => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "settings-type-option";
+        button.dataset.value = option.value;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", option.value === active ? "true" : "false");
+        button.textContent = option.label;
+        if (option.value === active) button.classList.add("is-active");
+        button.addEventListener("click", () => {
+          closeSettingsPresetTypeMenu();
+          if (els.settingsPresetType) {
+            els.settingsPresetType.value = option.value;
+            els.settingsPresetType.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            settingsUi.presetType = normalizeType(option.value);
+            renderSettingsUI();
+          }
+        });
+        fragment.appendChild(button);
       });
-      fragment.appendChild(button);
     });
     els.settingsPresetTypeMenu.replaceChildren(fragment);
   }
@@ -3349,8 +4076,12 @@
 
   function renderSettingsUI() {
     if (!els.settingsOverlay) return;
-    if (els.settingsPresetType && els.settingsPresetType.options.length !== TYPE_OPTIONS.length) {
-      els.settingsPresetType.innerHTML = TYPE_OPTIONS.map(option => `<option value="${option.value}">${option.label}</option>`).join("");
+    if (els.settingsPresetType) {
+      els.settingsPresetType.innerHTML = TYPE_OPTIONS_BY_CATEGORY.map(group => `
+        <optgroup label="${group.label}">
+          ${group.options.map(option => `<option value="${option.value}">&nbsp;${option.label}</option>`).join("")}
+        </optgroup>
+      `).join("");
     }
     if (els.settingsPresetType) {
       els.settingsPresetType.value = normalizeType(settingsUi.presetType || state.type);
@@ -3368,6 +4099,7 @@
     renderPresetList();
     renderHistoryList();
     renderSettingsSoundControls();
+    renderSettingsCloudControls();
     renderSettingsClockControls();
   }
 
@@ -4748,7 +5480,7 @@
     }
     if (runtime.plan.kind === "slot") {
       setClockMeridiem("");
-      renderDigits(slotDisplayValue(runtime.slot?.values));
+      requestSlotReelRender();
       setStatus("READY");
       setPreview(typeLabel(state.type));
       setDurationPill(totalSummaryForType(), "Ready");
@@ -4962,6 +5694,10 @@
     if (!button) return;
     button.textContent = "";
     if (column?.itemClass) button.classList.add(column.itemClass);
+    if (item?.typeGroup) {
+      button.classList.add("has-type-group");
+      button.dataset.typeGroup = String(item.typeGroup);
+    }
     if (item?.hasBreak) button.classList.add("has-zone-break");
     if (item?.isLocal) button.classList.add("is-local-zone");
     if (typeof column?.renderNode === "function") {
@@ -5367,7 +6103,7 @@
 
     if (kind === "type") {
       els.pickerLabel.textContent = "Type";
-      els.pickerDesc.textContent = "Choose the pulse";
+      els.pickerDesc.textContent = "Grouped as TIME / FOCUS / PLAY, sorted A-Z.";
       picker.columns = buildTypeColumns();
       picker.selection = [state.type];
       renderPicker(picker.columns);
@@ -5685,6 +6421,7 @@
     updateAllUI();
     resetToIdleState();
     renderSettingsUI();
+    initCloudSync();
 
     updateUnitSegmentFromClicks();
     els.clockAnimButton?.addEventListener("click", () => openPicker("unit"));
@@ -5747,10 +6484,7 @@
     els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
     els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
     els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
-    els.slotStartBtn?.addEventListener("click", () => applyAndStart());
-    els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
-    els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
-    els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
+    els.slotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.stagePauseBtn?.addEventListener("click", () => {
       if (runtime.phase === "running") {
         pauseTimer();
@@ -5828,10 +6562,28 @@
     els.pickerOverlay.addEventListener("click", event => {
       if (event.target === els.pickerOverlay) closePicker();
     });
+    els.slotResetCancelBtn?.addEventListener("click", () => closeSlotResetConfirm());
+    els.slotResetConfirmBtn?.addEventListener("click", () => closeSlotResetConfirm({ confirmed: true }));
+    els.slotResetOverlay?.addEventListener("click", event => {
+      if (event.target === els.slotResetOverlay) closeSlotResetConfirm();
+    });
 
     document.addEventListener("keydown", event => {
       if (event.key === "Escape" && !els.pickerOverlay.hidden) {
         closePicker();
+        return;
+      }
+      if (els.slotResetOverlay && !els.slotResetOverlay.hidden) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeSlotResetConfirm();
+          return;
+        }
+        if (event.key === "Enter" || event.key === "9") {
+          event.preventDefault();
+          closeSlotResetConfirm({ confirmed: true });
+          return;
+        }
         return;
       }
       if (!els.pickerOverlay.hidden && picker.columns.length) {
@@ -6047,7 +6799,7 @@
         button.type = "button";
         button.className = "picker-item";
         button.dataset.value = String(item.value);
-        button.textContent = column.render ? column.render(item) : String(item.label ?? item.value);
+        applyPickerItemContent(button, column, item);
         button.addEventListener("click", () => {
           if (Number(wheel.dataset.dragBlockUntil || 0) > performance.now()) return;
           picker.selection[index] = column.parse ? column.parse(item.value) : item.value;
@@ -6299,7 +7051,7 @@
 
     if (kind === "type") {
       els.pickerLabel.textContent = "Type";
-      els.pickerDesc.textContent = "Choose the pulse";
+      els.pickerDesc.textContent = "Grouped as TIME / FOCUS / PLAY, sorted A-Z.";
       picker.columns = buildTypeColumns();
       picker.selection = [state.type];
       renderPicker(picker.columns);
@@ -6830,6 +7582,7 @@
     updateAllUI();
     resetToIdleState();
     renderSettingsUI();
+    initCloudSync();
 
     updateUnitSegmentFromClicks();
     els.clockAnimButton?.addEventListener("click", () => openPicker("unit"));
@@ -6896,6 +7649,11 @@
       }
       applyAndStart();
     });
+    els.slotStartBtn?.addEventListener("click", () => applyAndStart());
+    els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
+    els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
+    els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
+    els.slotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.stagePauseBtn?.addEventListener("click", () => {
       if (runtime.phase === "running") {
         pauseTimer();
@@ -6976,6 +7734,11 @@
     els.pickerConfirm.addEventListener("click", confirmPicker);
     els.pickerOverlay.addEventListener("click", event => {
       if (event.target === els.pickerOverlay) closePicker();
+    });
+    els.slotResetCancelBtn?.addEventListener("click", () => closeSlotResetConfirm());
+    els.slotResetConfirmBtn?.addEventListener("click", () => closeSlotResetConfirm({ confirmed: true }));
+    els.slotResetOverlay?.addEventListener("click", event => {
+      if (event.target === els.slotResetOverlay) closeSlotResetConfirm();
     });
     els.settingsCloseBtn?.addEventListener("click", () => closeSettings());
     els.settingsOverlay?.addEventListener("click", event => {
@@ -7064,6 +7827,16 @@
     els.settingsSoundPreviewBtn?.addEventListener("click", () => {
       queueSoundPreview({ ...appStore.future.sound, enabled: true }, { force: true });
     });
+    els.settingsCloudAlias?.addEventListener("input", () => {
+      mergeCloudSettingsFromInputs();
+      renderSettingsCloudControls();
+    });
+    els.settingsCloudMagicLinkBtn?.addEventListener("click", () => {
+      signInCloudWithGoogle();
+    });
+    els.settingsCloudSignOutBtn?.addEventListener("click", () => {
+      signOutCloud();
+    });
 
     const restoreUiFromMinimalTap = event => {
       if (!document.body.classList.contains("is-minimal")) return;
@@ -7131,6 +7904,19 @@
         closePicker();
         return;
       }
+      if (els.slotResetOverlay && !els.slotResetOverlay.hidden) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeSlotResetConfirm();
+          return;
+        }
+        if (event.key === "Enter" || event.key === "9") {
+          event.preventDefault();
+          closeSlotResetConfirm({ confirmed: true });
+          return;
+        }
+        return;
+      }
       if (!els.settingsOverlay.hidden) return;
       if (els.alarmOverlay && !els.alarmOverlay.hidden) {
         if (event.key === "2") {
@@ -7183,24 +7969,33 @@
       if (isTypingTarget) return;
 
       if (els.pickerOverlay.hidden && state.type === "slot") {
-        if (event.key === "1" || event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+        if (event.key === "0") {
           event.preventDefault();
           applyAndStart();
           return;
         }
-        if (event.key === "2") {
+        if (event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+          event.preventDefault();
+          return;
+        }
+        if (event.key === "1") {
           event.preventDefault();
           stopSlotReelByIndex(0);
           return;
         }
-        if (event.key === "3") {
+        if (event.key === "2") {
           event.preventDefault();
           stopSlotReelByIndex(1);
           return;
         }
-        if (event.key === "4") {
+        if (event.key === "3") {
           event.preventDefault();
           stopSlotReelByIndex(2);
+          return;
+        }
+        if (event.key === "9") {
+          event.preventDefault();
+          requestSlotReset();
           return;
         }
       }
@@ -7353,9 +8148,20 @@
   }
 
   function buildTypeColumns() {
+    const items = [];
+    TYPE_OPTIONS_BY_CATEGORY.forEach(group => {
+      group.options.forEach((option, index) => {
+        items.push({
+          value: option.value,
+          label: option.label,
+          typeGroup: index === 0 ? group.label : "",
+        });
+      });
+    });
     return [{
       value: state.type,
-      items: TYPE_OPTIONS.map(option => ({ value: option.value, label: option.label })),
+      items,
+      itemClass: "is-type-item",
       render: item => item.label,
       parse: raw => String(raw),
     }];
@@ -8503,17 +9309,102 @@
         stopTimes: [],
         feed: [],
         reachActive: false,
+        effectMode: "",
+        effectUntil: 0,
+        renderRaf: 0,
         spinStartedAt: 0,
         spinId: 0,
+        questDigit: 7,
+        targetSpin: 1,
       };
     }
+    state.slotProgress = normalizeSlotProgress(state.slotProgress);
     if (!Array.isArray(runtime.slot.values) || runtime.slot.values.length !== 3) {
       runtime.slot.values = [7, 7, 7];
     }
     runtime.slot.values = runtime.slot.values.map(value => clamp(Math.floor(Number(value) || 0), 0, 9));
+    runtime.slot.renderRaf = Number.isFinite(runtime.slot.renderRaf) ? runtime.slot.renderRaf : 0;
     if (!Array.isArray(runtime.slot.reels)) runtime.slot.reels = [];
+    if (runtime.slot.reels.length > 3) runtime.slot.reels.length = 3;
+    for (let index = 0; index < 3; index++) {
+      const current = runtime.slot.reels[index];
+      if (!current || typeof current !== "object") {
+        runtime.slot.reels[index] = {
+          index,
+          value: runtime.slot.values[index] ?? 7,
+          spinning: false,
+          state: "idle",
+          timerId: 0,
+          rafId: 0,
+          nextTickAt: 0,
+          tickStepMs: 0,
+        };
+        continue;
+      }
+      current.index = index;
+      current.value = clamp(Math.floor(Number(current.value ?? runtime.slot.values[index] ?? 0)), 0, 9);
+      current.spinning = Boolean(current.spinning);
+      current.state = current.state === "hit" || current.state === "perfect" ? current.state : "idle";
+      current.timerId = Number.isFinite(current.timerId) ? current.timerId : 0;
+      current.rafId = Number.isFinite(current.rafId) ? current.rafId : 0;
+      current.nextTickAt = Number.isFinite(current.nextTickAt) ? current.nextTickAt : 0;
+      current.tickStepMs = Number.isFinite(current.tickStepMs) ? current.tickStepMs : 0;
+      runtime.slot.reels[index] = current;
+    }
     if (!Array.isArray(runtime.slot.stopTimes)) runtime.slot.stopTimes = [];
     if (!Array.isArray(runtime.slot.feed)) runtime.slot.feed = [];
+    if (!Number.isFinite(runtime.slot.spinId)) runtime.slot.spinId = 0;
+    runtime.slot.questDigit = Number.isInteger(runtime.slot.questDigit)
+      ? clamp(Math.floor(runtime.slot.questDigit), 0, 9)
+      : randomSlotDigit(null, state.slot?.reelDigits || 10);
+    runtime.slot.effectMode = ["big", "reach"].includes(String(runtime.slot.effectMode || "").toLowerCase())
+      ? String(runtime.slot.effectMode).toLowerCase()
+      : "";
+    runtime.slot.effectUntil = Number.isFinite(runtime.slot.effectUntil) ? Math.max(0, runtime.slot.effectUntil) : 0;
+    if (runtime.slot.effectUntil > 0 && runtime.slot.effectUntil <= performance.now()) {
+      runtime.slot.effectMode = "";
+      runtime.slot.effectUntil = 0;
+    }
+    const defaultTargetSpin = Math.max(1, state.slotProgress.totalSpins + 1);
+    runtime.slot.targetSpin = clamp(Math.floor(Number(runtime.slot.targetSpin) || defaultTargetSpin), 1, 999999999);
+    if (runtime.slot.targetSpin <= state.slotProgress.totalSpins) {
+      runtime.slot.targetSpin = state.slotProgress.totalSpins + 1;
+    }
+  }
+
+  function clearSlotVisualRefreshTimer() {
+    if (!slotVisualRefreshTimer) return;
+    window.clearTimeout(slotVisualRefreshTimer);
+    slotVisualRefreshTimer = 0;
+  }
+
+  function scheduleSlotVisualRefresh() {
+    clearSlotVisualRefreshTimer();
+    if (state.type !== "slot") return;
+    const until = Number(runtime.slot?.effectUntil) || 0;
+    if (until <= 0) return;
+    const leftMs = until - performance.now();
+    if (leftMs <= 0) return;
+    slotVisualRefreshTimer = window.setTimeout(() => {
+      slotVisualRefreshTimer = 0;
+      if (state.type === "slot") renderSlotPanel();
+    }, Math.min(2400, Math.max(60, Math.round(leftMs + 24))));
+  }
+
+  function setSlotVisualMode(mode = "idle") {
+    const row = els.slotStateRow || els.slotStateChip?.closest(".slot-state-row");
+    const visual = row || els.slotStateChip;
+    if (visual) {
+      visual.classList.remove("is-slot-spin", "is-slot-reach", "is-slot-big");
+      if (mode === "spin") visual.classList.add("is-slot-spin");
+      if (mode === "reach") visual.classList.add("is-slot-reach");
+      if (mode === "big") visual.classList.add("is-slot-big");
+    }
+    if (stageTimer) {
+      stageTimer.classList.remove("slot-fx-reach", "slot-fx-big");
+      if (mode === "reach") stageTimer.classList.add("slot-fx-reach");
+      if (mode === "big") stageTimer.classList.add("slot-fx-big");
+    }
   }
 
   function slotReelNodes() {
@@ -8537,18 +9428,55 @@
     return Math.min(forward, safeModulo - forward);
   }
 
+  function randomSlotDigit(exclude = null, modulo = 10) {
+    const safeModulo = Math.max(2, Math.floor(Number(modulo) || 10));
+    let next = Math.floor(Math.random() * safeModulo);
+    if (!Number.isInteger(exclude)) return next;
+    const safeExclude = ((exclude % safeModulo) + safeModulo) % safeModulo;
+    if (safeModulo <= 1 || next !== safeExclude) return next;
+    next = (next + 1 + Math.floor(Math.random() * (safeModulo - 1))) % safeModulo;
+    return next;
+  }
+
+  function primeSlotRoundTargets(targetSpin = ((state.slotProgress && Number.isFinite(state.slotProgress.totalSpins)) ? state.slotProgress.totalSpins + 1 : 1)) {
+    ensureSlotRuntimeState();
+    const safeSpin = clamp(Math.floor(Number(targetSpin) || (state.slotProgress.totalSpins + 1)), 1, 999999999);
+    const previousQuest = Number.isInteger(runtime.slot.questDigit) ? runtime.slot.questDigit : null;
+    runtime.slot.targetSpin = safeSpin;
+    runtime.slot.questDigit = randomSlotDigit(previousQuest, state.slot?.reelDigits || 10);
+  }
+
   function slotStepMsForReel(speed, reelIndex = 0) {
     const base = slotSpeedOptionById(speed).stepMs;
-    return clamp(Math.round(base - reelIndex * 4), 28, 220);
+    return clamp(Math.round(base - reelIndex * 4), 20, 220);
   }
 
   function stopSlotReelTimers() {
     ensureSlotRuntimeState();
+    if (runtime.slot.renderRaf) {
+      window.cancelAnimationFrame(runtime.slot.renderRaf);
+      runtime.slot.renderRaf = 0;
+    }
     runtime.slot.reels.forEach(reel => {
       if (reel?.timerId) {
         window.clearInterval(reel.timerId);
         reel.timerId = 0;
       }
+      if (reel?.rafId) {
+        window.cancelAnimationFrame(reel.rafId);
+        reel.rafId = 0;
+      }
+      reel.nextTickAt = 0;
+      reel.tickStepMs = 0;
+    });
+  }
+
+  function requestSlotReelRender() {
+    if (!runtime.slot || !Array.isArray(runtime.slot.reels)) return;
+    if (runtime.slot.renderRaf) return;
+    runtime.slot.renderRaf = window.requestAnimationFrame(() => {
+      runtime.slot.renderRaf = 0;
+      renderSlotReelValues();
     });
   }
 
@@ -8564,22 +9492,93 @@
   }
 
   function emitSlotParticles(kind = "tap", target = timerFrame) {
+    const reachPalette = [
+      [182, 114, 255],
+      [130, 88, 255],
+      [223, 184, 255],
+      [158, 120, 255],
+    ];
+    const bigPalette = [
+      [255, 134, 192],
+      [255, 214, 126],
+      [112, 214, 255],
+      [255, 176, 122],
+    ];
     const palette = kind === "big"
-      ? phasePalette("focus")
-      : kind === "reach"
-        ? phasePalette("warmup")
+      ? bigPalette
+      : kind === "reach" || kind === "reach-live"
+        ? reachPalette
         : phasePalette("rest");
     const config = kind === "big"
-      ? { count: 144, stage: "rush", xSpread: 188, ySpread: 120, sweep: 264, durationMin: 0.96, durationMax: 1.44, opacityBase: 0.74 }
+      ? { count: 360, stage: "rush", xSpread: 428, ySpread: 248, sweep: 586, durationMin: 1.28, durationMax: 2.34, opacityBase: 0.9 }
       : kind === "reach"
-        ? { count: 92, stage: "turn", xSpread: 142, ySpread: 86, sweep: 212, durationMin: 0.84, durationMax: 1.22, opacityBase: 0.66 }
+        ? { count: 220, stage: "turn", xSpread: 292, ySpread: 188, sweep: 438, durationMin: 1.12, durationMax: 1.92, opacityBase: 0.82 }
+        : kind === "reach-live"
+          ? { count: 96, stage: "turn", xSpread: 186, ySpread: 122, sweep: 286, durationMin: 0.82, durationMax: 1.38, opacityBase: 0.68 }
         : kind === "miss"
           ? { count: 66, stage: "calm", xSpread: 108, ySpread: 62, sweep: 156, durationMin: 0.9, durationMax: 1.26, opacityBase: 0.52 }
           : { count: 40, stage: "calm", xSpread: 88, ySpread: 44, sweep: 120, durationMin: 0.86, durationMax: 1.18, opacityBase: 0.5 };
-    createParticleBurst(target || timerFrame, {
+    const anchor = target || timerFrame;
+    createParticleBurst(anchor, {
       ...config,
       palette,
     });
+    if (kind === "big") {
+      window.setTimeout(() => {
+        createParticleBurst(anchor, {
+          count: 280,
+          palette: bigPalette,
+          stage: "rush",
+          xSpread: 364,
+          ySpread: 228,
+          sweep: 496,
+          durationMin: 1.16,
+          durationMax: 2.06,
+          opacityBase: 0.84,
+        });
+      }, 180);
+      window.setTimeout(() => {
+        createParticleBurst(anchor, {
+          count: 220,
+          palette: bigPalette,
+          stage: "rush",
+          xSpread: 328,
+          ySpread: 206,
+          sweep: 452,
+          durationMin: 1.08,
+          durationMax: 1.98,
+          opacityBase: 0.8,
+        });
+      }, 420);
+    } else if (kind === "reach") {
+      window.setTimeout(() => {
+        createParticleBurst(anchor, {
+          count: 164,
+          palette: reachPalette,
+          stage: "turn",
+          xSpread: 254,
+          ySpread: 168,
+          sweep: 374,
+          durationMin: 1.04,
+          durationMax: 1.76,
+          opacityBase: 0.78,
+        });
+      }, 160);
+    } else if (kind === "reach-live") {
+      window.setTimeout(() => {
+        createParticleBurst(anchor, {
+          count: 54,
+          palette: reachPalette,
+          stage: "turn",
+          xSpread: 152,
+          ySpread: 102,
+          sweep: 232,
+          durationMin: 0.78,
+          durationMax: 1.2,
+          opacityBase: 0.6,
+        });
+      }, 90);
+    }
   }
 
   function renderSlotReelValues() {
@@ -8592,6 +9591,9 @@
           spinning: false,
           state: "idle",
           timerId: 0,
+          rafId: 0,
+          nextTickAt: 0,
+          tickStepMs: 0,
         }));
     const nodes = slotReelNodes();
     nodes.forEach((node, index) => {
@@ -8607,6 +9609,27 @@
         node.root.classList.toggle("is-perfect", reel.state === "perfect");
       }
     });
+  }
+
+  function renderSlotDashboard() {
+    state.slotProgress = normalizeSlotProgress(state.slotProgress);
+    const progress = state.slotProgress;
+    const questDigit = Number.isInteger(runtime.slot?.questDigit) ? runtime.slot.questDigit : 0;
+    if (els.slotPointValue) els.slotPointValue.textContent = String(progress.points);
+    if (els.slotStarValue) els.slotStarValue.textContent = String(progress.stars);
+    if (els.slotHeartValue) els.slotHeartValue.textContent = String(progress.hearts);
+    if (els.slotSpinValue) els.slotSpinValue.textContent = `#${progress.totalSpins}`;
+    if (els.slotLastBigValue) els.slotLastBigValue.textContent = progress.lastBigSpin > 0 ? `#${progress.lastBigSpin}` : "--";
+    if (els.slotStreakValue) els.slotStreakValue.textContent = `x${progress.bigStreak}`;
+    if (els.slotStreakMeta) {
+      const streakMeta = progress.bigStreak > 0 && progress.bigStreakStartSpin > 0
+        ? `from #${progress.bigStreakStartSpin}`
+        : `best x${progress.bestBigStreak}`;
+      els.slotStreakMeta.textContent = streakMeta;
+    }
+    if (els.slotQuestValue) els.slotQuestValue.textContent = String(questDigit);
+    const highlightedSpin = runtime.slot?.spinning ? progress.totalSpins : (progress.totalSpins + 1);
+    if (els.slotQuestCard) els.slotQuestCard.classList.toggle("is-active", runtime.slot?.targetSpin === highlightedSpin);
   }
 
   function renderSlotFeedCards() {
@@ -8657,6 +9680,18 @@
         just.textContent = "VITA";
         flags.appendChild(just);
       }
+      if (entry.starHit) {
+        const star = document.createElement("div");
+        star.className = "lap-flag is-best";
+        star.textContent = "☆ QUEST";
+        flags.appendChild(star);
+      }
+      if (entry.heartHit) {
+        const heart = document.createElement("div");
+        heart.className = "lap-flag is-best";
+        heart.textContent = "♥ STREAK";
+        flags.appendChild(heart);
+      }
 
       row.append(decor, index, times, flags);
       fragment.appendChild(row);
@@ -8667,51 +9702,87 @@
   function renderSlotPanel() {
     if (!els.slotPanel) return;
     ensureSlotRuntimeState();
-    const visible = state.type === "slot" && !document.body.classList.contains("is-minimal");
+    const isSlot = state.type === "slot";
+    const showSlotDetailUi = isSlot && !document.body.classList.contains("is-minimal");
+    if (els.timerButton) els.timerButton.classList.toggle("is-slot-mode", isSlot);
+    if (els.timerText) els.timerText.hidden = isSlot;
+    if (els.slotCenter) els.slotCenter.hidden = !isSlot;
+    if (els.slotStateChip) els.slotStateChip.hidden = !showSlotDetailUi;
+    const visible = showSlotDetailUi;
     els.stage?.classList.toggle("has-slot", visible);
     els.slotPanel.hidden = !visible;
-    if (!visible) return;
+    renderSlotReelValues();
+    if (!visible) {
+      clearSlotVisualRefreshTimer();
+      setSlotVisualMode("idle");
+      return;
+    }
 
-    const speed = slotSpeedOptionById(state.slot?.speed);
-    const assist = slotAssistOptionById(state.slot?.assist);
-    if (els.slotSpeedChip) els.slotSpeedChip.textContent = speed.label;
-    if (els.slotAssistChip) els.slotAssistChip.textContent = `ASSIST ${assist.label}`;
+    const now = performance.now();
+    if (runtime.slot.effectUntil > 0 && runtime.slot.effectUntil <= now) {
+      runtime.slot.effectMode = "";
+      runtime.slot.effectUntil = 0;
+    }
     if (els.slotStateChip) {
       const top = runtime.slot.feed[0];
       els.slotStateChip.textContent = runtime.slot.spinning
         ? (runtime.slot.reachActive ? "REACH" : "SPINNING")
         : top?.kind === "big"
           ? (top.just ? "VITA" : "BIG")
-          : "READY";
+          : Number.isInteger(runtime.slot.questDigit)
+            ? `READY ☆${runtime.slot.questDigit}`
+            : "READY";
     }
+    const slotVisualMode = runtime.slot.spinning
+      ? (runtime.slot.reachActive ? "reach" : "spin")
+      : (runtime.slot.effectUntil > now && runtime.slot.effectMode
+        ? runtime.slot.effectMode
+        : "idle");
+    setSlotVisualMode(slotVisualMode);
+    scheduleSlotVisualRefresh();
     if (els.slotStartBtn) {
       setButtonLabel(els.slotStartBtn, runtime.slot.spinning ? "RESPIN" : "SPIN");
-      setButtonShortcut(els.slotStartBtn, "1");
+      setButtonShortcut(els.slotStartBtn, "0");
       els.slotStartBtn.disabled = false;
     }
 
-    const labels = ["LEFT", "CENTER", "RIGHT"];
+    const labels = ["REEL 1", "REEL 2", "REEL 3"];
     [els.slotStopLeftBtn, els.slotStopCenterBtn, els.slotStopRightBtn].forEach((button, index) => {
       if (!button) return;
       const spinning = Boolean(runtime.slot.spinning && runtime.slot.reels[index]?.spinning);
       button.disabled = !spinning;
-      setButtonLabel(button, spinning ? labels[index] : "LOCK");
-      setButtonShortcut(button, String(index + 2));
+      setButtonLabel(button, labels[index]);
+      setButtonShortcut(button, String(index + 1));
     });
+    if (els.slotResetBtn) {
+      els.slotResetBtn.disabled = false;
+      setButtonLabel(els.slotResetBtn, "RESET");
+      setButtonShortcut(els.slotResetBtn, "9");
+    }
 
-    renderSlotReelValues();
+    renderSlotDashboard();
     renderSlotFeedCards();
   }
 
-  function pushSlotFeedEntry({ values, kind = "miss", just = false } = {}) {
+  function pushSlotFeedEntry({
+    values,
+    kind = "miss",
+    just = false,
+    starHit = false,
+    heartHit = false,
+    rewardLabel = "",
+  } = {}) {
     ensureSlotRuntimeState();
+    const reward = String(rewardLabel || "").trim();
     runtime.slot.feed.unshift({
-      spin: runtime.slot.spinId,
+      spin: Math.max(1, Math.floor(Number(state.slotProgress?.totalSpins) || runtime.slot.spinId || 1)),
       values: (Array.isArray(values) ? values : [0, 0, 0]).map(value => clamp(Math.floor(Number(value) || 0), 0, 9)),
       kind,
       just,
+      starHit: Boolean(starHit),
+      heartHit: Boolean(heartHit),
       label: kind === "big" ? (just ? "Vita big hit" : "Big hit") : kind === "reach" ? "Reach miss" : "Miss",
-      detail: `${slotSpeedOptionById(state.slot?.speed).label} · ${slotAssistOptionById(state.slot?.assist).label}`,
+      detail: `${slotSpeedOptionById(state.slot?.speed).label} · ${slotAssistOptionById(state.slot?.assist).label}${reward ? ` · ${reward}` : ""}`,
       timestamp: Date.now(),
     });
     runtime.slot.feed = runtime.slot.feed.slice(0, 24);
@@ -8732,6 +9803,30 @@
     const spread = stopTimes.length >= 2 ? Math.max(...stopTimes) - Math.min(...stopTimes) : Number.POSITIVE_INFINITY;
     const justWindowMs = slotAssistOptionById(state.slot?.assist).justWindowMs;
     const isJust = isBig && spread <= justWindowMs;
+    const questDigit = Number.isInteger(runtime.slot.questDigit) ? runtime.slot.questDigit : null;
+    const questHit = isBig && questDigit != null && values[0] === questDigit;
+    const progress = normalizeSlotProgress(state.slotProgress);
+    const contiguous = isBig && progress.lastBigSpin > 0 && progress.lastBigSpin === (progress.totalSpins - 1);
+    if (isBig) {
+      progress.points += 1;
+      progress.lastBigSpin = progress.totalSpins;
+      progress.bigStreak = contiguous ? progress.bigStreak + 1 : 1;
+      progress.bigStreakStartSpin = contiguous && progress.bigStreakStartSpin > 0
+        ? progress.bigStreakStartSpin
+        : progress.totalSpins;
+      progress.bestBigStreak = Math.max(progress.bestBigStreak, progress.bigStreak);
+      if (questHit) progress.stars += 1;
+      if (contiguous) progress.hearts += 1;
+    } else {
+      progress.bigStreak = 0;
+      progress.bigStreakStartSpin = 0;
+    }
+    state.slotProgress = normalizeSlotProgress(progress);
+    const rewardParts = [];
+    if (isBig) rewardParts.push("+1P");
+    if (questHit) rewardParts.push("☆+1");
+    if (contiguous) rewardParts.push("♥+1");
+    const rewardLabel = rewardParts.join(" ");
     runtime.slot.reachActive = false;
     runtime.slot.reels.forEach(reel => {
       reel.spinning = false;
@@ -8739,17 +9834,28 @@
     });
 
     if (isBig) {
+      runtime.slot.effectMode = "big";
+      runtime.slot.effectUntil = performance.now() + 4600;
       setStatus(isJust ? "VITA" : "BIG");
-      setDurationPill(totalSummaryForType(), isJust ? "Vita push" : "Big bonus");
+      setDurationPill(totalSummaryForType(), `${isJust ? "Vita push" : "Big bonus"} · ${rewardLabel || "+1P"}`);
       emitSlotParticles("big", timerFrame);
       playCompletionSound();
-      pushSlotFeedEntry({ values, kind: "big", just: isJust });
+      pushSlotFeedEntry({
+        values,
+        kind: "big",
+        just: isJust,
+        starHit: questHit,
+        heartHit: contiguous,
+        rewardLabel,
+      });
       logHistory("slot_big", {
         type: "slot",
         summary: isJust ? "SLOT VITA" : "SLOT BIG",
-        note: `${values.join("")} · ${slotSummary(state.slot)}${assistSnap ? " · ASSIST SNAP" : ""}`,
+        note: `${values.join("")} · ${slotSummary(state.slot)}${assistSnap ? " · ASSIST SNAP" : ""}${rewardLabel ? ` · ${rewardLabel}` : ""}`,
       });
     } else if (wasReach) {
+      runtime.slot.effectMode = "reach";
+      runtime.slot.effectUntil = performance.now() + 2700;
       setStatus("MISS");
       setDurationPill(totalSummaryForType(), "Reach miss");
       emitSlotParticles("reach", timerFrame);
@@ -8761,6 +9867,8 @@
         note: `${values.join("")} · ${slotSummary(state.slot)}${assistSnap ? " · ASSIST SNAP" : ""}`,
       });
     } else {
+      runtime.slot.effectMode = "";
+      runtime.slot.effectUntil = 0;
       setStatus("READY");
       setDurationPill(totalSummaryForType(), "Try again");
       emitSlotParticles("miss", timerFrame);
@@ -8768,18 +9876,107 @@
     }
     setPreview(typeLabel(state.type));
     setClockMeridiem("");
-    renderDigits(slotDisplayValue(values));
+    primeSlotRoundTargets(state.slotProgress.totalSpins + 1);
     renderSlotPanel();
+    persistStore();
+  }
+
+  function resetSlotProgress({ log = true } = {}) {
+    ensureSlotRuntimeState();
+    stopSlotReelTimers();
+    clearSlotVisualRefreshTimer();
+    setSlotVisualMode("idle");
+    runtime.slot.spinning = false;
+    runtime.slot.reachActive = false;
+    runtime.slot.effectMode = "";
+    runtime.slot.effectUntil = 0;
+    runtime.slot.stopTimes = [];
+    runtime.slot.spinStartedAt = 0;
+    runtime.slot.spinId = 0;
+    runtime.slot.feed = [];
+    state.slotProgress = normalizeSlotProgress(DEFAULT_STATE.slotProgress);
+    runtime.slot.values = [7, 7, 7];
+    runtime.slot.reels = runtime.slot.values.map((value, index) => ({
+      index,
+      value,
+      spinning: false,
+      state: "idle",
+      timerId: 0,
+      rafId: 0,
+      nextTickAt: 0,
+      tickStepMs: 0,
+    }));
+    primeSlotRoundTargets(1);
+    document.body.classList.remove("is-ended");
+    clearTrailParticles();
+    setStatus("READY");
+    setPreview(typeLabel(state.type));
+    setDurationPill(totalSummaryForType(), "Slot reset");
+    setClockMeridiem("");
+    renderSlotPanel();
+    persistStore();
+    if (log) {
+      logHistory("slot_reset", {
+        type: "slot",
+        summary: "SLOT RESET",
+        note: "Progress and spin logs cleared",
+      });
+    }
+  }
+
+  function openSlotResetConfirm() {
+    if (!els.slotResetOverlay || !els.slotResetCancelBtn || !els.slotResetConfirmBtn) return false;
+    if (!els.slotResetOverlay.hidden) return true;
+    slotResetConfirmOpen = true;
+    document.body.classList.add("has-confirm-dialog");
+    els.slotResetOverlay.hidden = false;
+    window.setTimeout(() => {
+      try {
+        els.slotResetCancelBtn.focus({ preventScroll: true });
+      } catch {
+        els.slotResetCancelBtn.focus();
+      }
+    }, 0);
+    return true;
+  }
+
+  function closeSlotResetConfirm({ confirmed = false } = {}) {
+    if (!els.slotResetOverlay) return false;
+    const wasOpen = slotResetConfirmOpen || !els.slotResetOverlay.hidden;
+    slotResetConfirmOpen = false;
+    els.slotResetOverlay.hidden = true;
+    document.body.classList.remove("has-confirm-dialog");
+    if (confirmed) {
+      resetSlotProgress();
+    }
+    return wasOpen;
+  }
+
+  function requestSlotReset() {
+    if (state.type !== "slot") return;
+    const opened = openSlotResetConfirm();
+    if (opened) return;
+    const ok = window.confirm("Reset SLOT progress?\nThis clears spin count, points, stars, hearts, and recent logs.");
+    if (ok) resetSlotProgress();
   }
 
   function startSlotSpin() {
     if (state.type !== "slot") return;
     ensureSlotRuntimeState();
     state.slot = normalizeTypeConfig("slot", state.slot);
+    state.slotProgress = normalizeSlotProgress({
+      ...state.slotProgress,
+      totalSpins: (state.slotProgress?.totalSpins || 0) + 1,
+    });
+    if (runtime.slot.targetSpin !== state.slotProgress.totalSpins) {
+      primeSlotRoundTargets(state.slotProgress.totalSpins);
+    }
     stopSlotReelTimers();
     runtime.slot.spinId += 1;
     runtime.slot.stopTimes = [];
     runtime.slot.reachActive = false;
+    runtime.slot.effectMode = "";
+    runtime.slot.effectUntil = 0;
     runtime.slot.spinStartedAt = performance.now();
     runtime.slot.spinning = true;
     runtime.slot.reels = Array.from({ length: 3 }, (_, index) => ({
@@ -8788,27 +9985,39 @@
       spinning: true,
       state: "idle",
       timerId: 0,
+      rafId: 0,
+      nextTickAt: 0,
+      tickStepMs: 0,
       ticks: 0,
     }));
     runtime.slot.values = runtime.slot.reels.map(reel => reel.value);
     const digits = Math.max(2, Math.floor(Number(state.slot?.reelDigits) || 10));
     runtime.slot.reels.forEach((reel, index) => {
-      reel.timerId = window.setInterval(() => {
-        if (state.type !== "slot") {
-          reel.spinning = false;
-          if (reel.timerId) {
-            window.clearInterval(reel.timerId);
-            reel.timerId = 0;
-          }
+      reel.tickStepMs = slotStepMsForReel(state.slot?.speed, index);
+      reel.nextTickAt = performance.now() + reel.tickStepMs;
+      const tickReel = now => {
+        if (state.type !== "slot" || !runtime.slot.spinning || !reel.spinning) {
+          reel.rafId = 0;
+          reel.nextTickAt = 0;
           return;
         }
-        if (!reel.spinning) return;
-        const step = Math.random() < 0.22 ? 2 : 1;
-        reel.value = (reel.value + step) % digits;
-        runtime.slot.values[index] = reel.value;
-        renderSlotReelValues();
-        renderDigits(slotDisplayValue(runtime.slot.values));
-      }, slotStepMsForReel(state.slot?.speed, index));
+        const tickMs = Math.max(12, reel.tickStepMs || slotStepMsForReel(state.slot?.speed, index));
+        let advanced = false;
+        while (now >= reel.nextTickAt) {
+          const step = Math.random() < 0.22 ? 2 : 1;
+          reel.value = (reel.value + step) % digits;
+          runtime.slot.values[index] = reel.value;
+          reel.nextTickAt += tickMs;
+          advanced = true;
+          if (now - reel.nextTickAt > tickMs * 8) {
+            reel.nextTickAt = now + tickMs;
+            break;
+          }
+        }
+        if (advanced) requestSlotReelRender();
+        reel.rafId = window.requestAnimationFrame(tickReel);
+      };
+      reel.rafId = window.requestAnimationFrame(tickReel);
     });
     runtime.phase = "running";
     runtime.plan = {
@@ -8821,10 +10030,12 @@
     setClockMeridiem("");
     setStatus("SPIN");
     setPreview(typeLabel(state.type));
-    setDurationPill(totalSummaryForType(), "Stop reels with 2 / 3 / 4");
+    setDurationPill(
+      totalSummaryForType(),
+      `SPIN 0 · STOP 1/2/3 · Quest ${runtime.slot.questDigit}`,
+    );
     playSlotCue({ preview: true });
     renderSlotPanel();
-    renderDigits(slotDisplayValue(runtime.slot.values));
   }
 
   function stopSlotReelByIndex(index) {
@@ -8840,6 +10051,11 @@
       window.clearInterval(reel.timerId);
       reel.timerId = 0;
     }
+    if (reel.rafId) {
+      window.cancelAnimationFrame(reel.rafId);
+      reel.rafId = 0;
+    }
+    reel.nextTickAt = 0;
     runtime.slot.stopTimes[safeIndex] = performance.now();
     runtime.slot.values[safeIndex] = clamp(Math.floor(Number(reel.value) || 0), 0, 9);
     emitSlotParticles("tap", slotReelNodes()[safeIndex]?.root || timerFrame);
@@ -8849,9 +10065,14 @@
     const locked = runtime.slot.reels.filter(item => !item.spinning);
     if (remaining === 1 && locked.length === 2 && locked[0].value === locked[1].value) {
       runtime.slot.reachActive = true;
+      runtime.slot.effectMode = "reach";
+      runtime.slot.effectUntil = performance.now() + 3000;
       setStatus("REACH");
-      setDurationPill(totalSummaryForType(), "Chance");
-      emitSlotParticles("reach", timerFrame);
+      setDurationPill(
+        totalSummaryForType(),
+        `Chance · Quest ${runtime.slot.questDigit}`,
+      );
+      emitSlotParticles("reach-live", timerFrame);
       playSlotCue({ preview: false, force: true });
     }
 
@@ -8885,7 +10106,6 @@
     }
 
     renderSlotPanel();
-    renderDigits(slotDisplayValue(runtime.slot.values));
   }
 
   function buildPlan() {
@@ -10538,6 +11758,8 @@
     runtime.alarmConsumedIds = [];
     runtime.slot.spinning = false;
     runtime.slot.reachActive = false;
+    runtime.slot.effectMode = "";
+    runtime.slot.effectUntil = 0;
     runtime.slot.stopTimes = [];
     runtime.slot.reels = runtime.slot.values.map((value, index) => ({
       index,
@@ -10555,6 +11777,8 @@
     hideAlarmOverlay();
     document.body.classList.remove("is-ended");
     clearTrailParticles();
+    clearSlotVisualRefreshTimer();
+    setSlotVisualMode("idle");
     renderIdleTimer();
     if (state.type === "clock") {
       ensureClockTicker({ force: true });
