@@ -3611,7 +3611,7 @@
   function positionAlarmDisplayToggle() {
     if (!els.alarmDisplayToggle || els.alarmDisplayToggle.hidden || !timerFrame || !els.timerText) return;
     const frameRect = timerFrame.getBoundingClientRect();
-    const textRect = clockMeridiemAnchorRect() || els.timerText.getBoundingClientRect();
+    const textRect = els.timerText.getBoundingClientRect();
     const leadingRect = clockMeridiemLeadingCharRect() || textRect;
     if (frameRect.width < 2 || textRect.width < 2 || textRect.height < 2) return;
     const isMobile = isMobileUiMode();
@@ -3654,10 +3654,18 @@
       height,
     });
 
-    if (rectsIntersect(localToggleRect(), localTextRect, isMobile ? 3 : 2)) {
-      const aboveGap = Math.max(gapY, localTextRect.height * (isMobile ? 0.2 : 0.16));
+    const overlapPadding = isMobile ? 5 : 4;
+    if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
+      const aboveGap = Math.max(gapY, localTextRect.height * (isMobile ? 0.28 : 0.22));
       const preferredTop = localTextRect.top - aboveGap - height * 0.5;
-      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, minTop, maxTop);
+      const relaxedMinTop = Math.min(minTop, -height * 0.45);
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, relaxedMinTop, maxTop);
+    }
+
+    if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
+      const emergencyTop = localTextRect.top - height * (isMobile ? 1.14 : 1.04);
+      const relaxedMinTop = -height * 0.58;
+      top = clamp(emergencyTop, relaxedMinTop, maxTop);
     }
 
     els.alarmDisplayToggle.style.left = `${left}px`;
