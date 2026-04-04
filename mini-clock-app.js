@@ -394,6 +394,13 @@
   ];
 
   const SIZE_OPTIONS = Array.from({ length: 20 }, (_, i) => (i + 1) * 10);
+  const SCALE_FIXED_MODE = "fixed";
+  const SCALE_MODE_OPTIONS = [
+    { id: "adjust-l", label: "ADJUST L", compact: "ADJ L", desktopFill: 0.995, mobileFill: 0.972, desktopHeightFill: 0.96, mobileHeightFill: 0.94 },
+    { id: "adjust-m", label: "ADJUST M", compact: "ADJ M", desktopFill: 0.93, mobileFill: 0.905, desktopHeightFill: 0.9, mobileHeightFill: 0.88 },
+    { id: "adjust-s", label: "ADJUST S", compact: "ADJ S", desktopFill: 0.865, mobileFill: 0.84, desktopHeightFill: 0.84, mobileHeightFill: 0.82 },
+  ];
+  const SCALE_MODE_IDS = new Set(SCALE_MODE_OPTIONS.map(option => option.id));
   const CLOCK_WORLD_CITIES = CLOCK_CITY_LIBRARY;
   const DEFAULT_SCENARIO = [
     { label: "Warm up", seconds: 60 },
@@ -426,7 +433,8 @@
     detailPanelVisible: true,
     type: "countdown",
     fontId: "Manrope",
-    size: 50,
+    size: 100,
+    sizeMode: "adjust-m",
     unit: "seconds",
     clock: {
       hourCycle: 24,
@@ -564,6 +572,8 @@
   let clockMeridiemObserversReady = false;
   let alarmDisplayTicker = 0;
   let alarmDisplayToggleFrame = 0;
+  let appliedScalePercent = normalizeScaleValue(DEFAULT_STATE.size);
+  let adaptiveScaleSignature = "";
 
   const picker = {
     kind: null,
@@ -733,7 +743,8 @@
       detailPanelVisible: source.detailPanelVisible !== false,
       type: source.type,
       fontId: source.fontId,
-      size: source.size,
+      size: normalizeScaleValue(source.size),
+      sizeMode: normalizeScaleMode(source.sizeMode, DEFAULT_STATE.sizeMode),
       unit: source.unit,
       alarmDisplayMode: normalizeAlarmDisplayMode(source.alarmDisplayMode),
       clock: {
@@ -768,6 +779,7 @@
     state.type = next.type;
     state.fontId = next.fontId;
     state.size = next.size;
+    state.sizeMode = next.sizeMode;
     state.unit = next.unit;
     state.alarmDisplayMode = normalizeAlarmDisplayMode(next.alarmDisplayMode);
     state.clock = {
@@ -928,6 +940,60 @@
 
   function normalizeScaleValue(size) {
     return clamp(Number(size) || 100, 10, 200);
+  }
+
+  function normalizeScaleMode(mode, fallback = SCALE_FIXED_MODE) {
+    const value = String(mode || "").trim().toLowerCase();
+    if (value === SCALE_FIXED_MODE || SCALE_MODE_IDS.has(value)) return value;
+    const safeFallback = String(fallback || "").trim().toLowerCase();
+    if (safeFallback === SCALE_FIXED_MODE || SCALE_MODE_IDS.has(safeFallback)) return safeFallback;
+    return SCALE_FIXED_MODE;
+  }
+
+  function scaleModeOptionById(id) {
+    const mode = normalizeScaleMode(id);
+    return SCALE_MODE_OPTIONS.find(option => option.id === mode) || null;
+  }
+
+  function isAdaptiveScaleMode(mode = state.sizeMode) {
+    return normalizeScaleMode(mode, DEFAULT_STATE.sizeMode) !== SCALE_FIXED_MODE;
+  }
+
+  function parseScaleChoice(value, { fallbackSize = state.size, fallbackMode = state.sizeMode } = {}) {
+    const fallback = {
+      size: normalizeScaleValue(fallbackSize),
+      mode: normalizeScaleMode(fallbackMode, DEFAULT_STATE.sizeMode),
+    };
+    if (value == null || value === "") return fallback;
+
+    if (typeof value === "object") {
+      const mode = normalizeScaleMode(value.mode, fallback.mode);
+      const size = value.size != null ? normalizeScaleValue(value.size) : fallback.size;
+      return { size, mode };
+    }
+
+    const raw = String(value).trim().toLowerCase();
+    if (!raw) return fallback;
+    if (raw === SCALE_FIXED_MODE || SCALE_MODE_IDS.has(raw)) {
+      return {
+        size: fallback.size,
+        mode: normalizeScaleMode(raw, fallback.mode),
+      };
+    }
+    const numeric = Number(raw);
+    if (Number.isFinite(numeric)) {
+      return {
+        size: normalizeScaleValue(numeric),
+        mode: SCALE_FIXED_MODE,
+      };
+    }
+    return fallback;
+  }
+
+  function scalePickerSelectionValue(size = state.size, sizeMode = state.sizeMode) {
+    const mode = normalizeScaleMode(sizeMode, DEFAULT_STATE.sizeMode);
+    if (mode === SCALE_FIXED_MODE) return String(normalizeScaleValue(size));
+    return mode;
   }
 
   function clockHourOptionById(id) {
@@ -1500,6 +1566,7 @@
       unit: normalizeUnit(preset.unit),
       fontId: normalizeFontId(preset.fontId ?? state.fontId),
       size: normalizeScaleValue(preset.size ?? state.size),
+      sizeMode: normalizeScaleMode(preset.sizeMode, SCALE_FIXED_MODE),
       createdAt: String(preset.createdAt || new Date().toISOString()),
       updatedAt: String(preset.updatedAt || preset.createdAt || new Date().toISOString()),
       config: normalizeTypeConfig(type, preset.config),
@@ -1513,6 +1580,7 @@
     const hasSound = Object.prototype.hasOwnProperty.call(snapshot, "sound");
     const hasFont = Object.prototype.hasOwnProperty.call(snapshot, "fontId");
     const hasSize = Object.prototype.hasOwnProperty.call(snapshot, "size");
+    const hasSizeMode = Object.prototype.hasOwnProperty.call(snapshot, "sizeMode");
     return {
       type,
       unit: normalizeUnit(snapshot.unit),
@@ -1520,6 +1588,7 @@
       sound: hasSound ? sanitizeSoundSettings(snapshot.sound) : null,
       fontId: hasFont ? normalizeFontId(snapshot.fontId) : null,
       size: hasSize ? normalizeScaleValue(snapshot.size) : null,
+      sizeMode: hasSizeMode ? normalizeScaleMode(snapshot.sizeMode, SCALE_FIXED_MODE) : null,
     };
   }
 
@@ -1545,9 +1614,10 @@
       }
     })());
     if (!stored || typeof stored !== "object") {
-      return { loaded: false, hasSize: false };
+      return { loaded: false, hasSize: false, hasScaleMode: false };
     }
     const hasStoredSize = Object.prototype.hasOwnProperty.call(stored.state || {}, "size");
+    const hasStoredScaleMode = Object.prototype.hasOwnProperty.call(stored.state || {}, "sizeMode");
     const nextState = cloneState({
       ...DEFAULT_STATE,
       ...(stored.state && typeof stored.state === "object" ? stored.state : {}),
@@ -1603,7 +1673,7 @@
       },
     };
     settingsUi.presetType = state.type;
-    return { loaded: true, hasSize: hasStoredSize };
+    return { loaded: true, hasSize: hasStoredSize, hasScaleMode: hasStoredScaleMode };
   }
 
   function persistStore() {
@@ -1790,8 +1860,22 @@
     return parts.join(" ");
   }
 
-  function formatScaleLabel(size) {
-    return `${size}%`;
+  function formatScaleLabel(size = state.size, sizeMode = state.sizeMode) {
+    const mode = normalizeScaleMode(sizeMode, DEFAULT_STATE.sizeMode);
+    if (mode !== SCALE_FIXED_MODE) {
+      const option = scaleModeOptionById(mode);
+      return option?.compact || "ADJ";
+    }
+    return `${normalizeScaleValue(size)}%`;
+  }
+
+  function formatScaleSummary(size = state.size, sizeMode = state.sizeMode) {
+    const mode = normalizeScaleMode(sizeMode, DEFAULT_STATE.sizeMode);
+    if (mode !== SCALE_FIXED_MODE) {
+      const option = scaleModeOptionById(mode);
+      return option?.label || "ADJUST";
+    }
+    return `${normalizeScaleValue(size)}%`;
   }
 
   function isSequenceDetailType(type = state.type) {
@@ -2034,7 +2118,7 @@
       repeats,
       soundPart,
       `FONT ${normalizeFontId(presetLike.fontId ?? state.fontId)}`,
-      `SCALE ${normalizeScaleValue(presetLike.size ?? state.size)}%`,
+      `SCALE ${formatScaleSummary(presetLike.size ?? state.size, presetLike.sizeMode ?? SCALE_FIXED_MODE)}`,
     ].filter(Boolean);
     return parts.join(" · ");
   }
@@ -2046,12 +2130,13 @@
     sound = appStore.future.sound,
     fontId = state.fontId,
     size = state.size,
+    sizeMode = state.sizeMode,
     excludeId = null,
   } = {}) {
-    const signature = presetSignature(type, unit, config, sound, fontId, size);
+    const signature = presetSignature(type, unit, config, sound, fontId, size, sizeMode);
     return appStore.presets.find(preset => {
       if (excludeId && preset.id === excludeId) return false;
-      return presetSignature(preset.type, preset.unit, preset.config, preset.sound, preset.fontId, preset.size) === signature;
+      return presetSignature(preset.type, preset.unit, preset.config, preset.sound, preset.fontId, preset.size, preset.sizeMode) === signature;
     }) || null;
   }
 
@@ -2312,7 +2397,15 @@
     return appStore.presets.filter(preset => preset.type === safeType);
   }
 
-  function presetSignature(type, unit, config, sound = appStore.future.sound, fontId = state.fontId, size = state.size) {
+  function presetSignature(
+    type,
+    unit,
+    config,
+    sound = appStore.future.sound,
+    fontId = state.fontId,
+    size = state.size,
+    sizeMode = state.sizeMode,
+  ) {
     const safeType = normalizeType(type);
     return JSON.stringify({
       type: safeType,
@@ -2321,22 +2414,55 @@
       sound: sanitizeSoundSettings(sound),
       fontId: normalizeFontId(fontId),
       size: normalizeScaleValue(size),
+      sizeMode: normalizeScaleMode(sizeMode, SCALE_FIXED_MODE),
     });
   }
 
   function matchingPresetForCurrentType(type = state.type) {
     const safeType = normalizeType(type);
-    const target = presetSignature(safeType, state.unit, extractTypeConfig(safeType), appStore.future.sound, state.fontId, state.size);
+    const target = presetSignature(
+      safeType,
+      state.unit,
+      extractTypeConfig(safeType),
+      appStore.future.sound,
+      state.fontId,
+      state.size,
+      state.sizeMode,
+    );
     return presetsForType(safeType).find(
-      preset => presetSignature(preset.type, preset.unit, preset.config, preset.sound, preset.fontId, preset.size) === target,
+      preset => presetSignature(
+        preset.type,
+        preset.unit,
+        preset.config,
+        preset.sound,
+        preset.fontId,
+        preset.size,
+        preset.sizeMode,
+      ) === target,
     ) || null;
   }
 
   function matchingPresetForCurrentSetup() {
     const safeType = normalizeType(state.type);
-    const target = presetSignature(safeType, state.unit, extractTypeConfig(safeType), appStore.future.sound, state.fontId, state.size);
+    const target = presetSignature(
+      safeType,
+      state.unit,
+      extractTypeConfig(safeType),
+      appStore.future.sound,
+      state.fontId,
+      state.size,
+      state.sizeMode,
+    );
     return appStore.presets.find(
-      preset => presetSignature(preset.type, preset.unit, preset.config, preset.sound, preset.fontId, preset.size) === target,
+      preset => presetSignature(
+        preset.type,
+        preset.unit,
+        preset.config,
+        preset.sound,
+        preset.fontId,
+        preset.size,
+        preset.sizeMode,
+      ) === target,
     ) || null;
   }
 
@@ -2370,6 +2496,7 @@
     sound = null,
     fontId = state.fontId,
     size = state.size,
+    sizeMode = state.sizeMode,
     createdAt = null,
   } = {}) {
     const safeType = normalizeType(type);
@@ -2383,6 +2510,10 @@
     const safeSound = sanitizeSoundSettings(sound || existing?.sound || appStore.future.sound);
     const safeFontId = normalizeFontId(fontId || existing?.fontId || state.fontId);
     const safeSize = normalizeScaleValue(size ?? existing?.size ?? state.size);
+    const safeSizeMode = normalizeScaleMode(
+      sizeMode ?? existing?.sizeMode ?? state.sizeMode,
+      SCALE_FIXED_MODE,
+    );
     const nextPreset = {
       id: existing?.id || id || createId("preset"),
       name: safeName,
@@ -2390,6 +2521,7 @@
       unit: safeUnit,
       fontId: safeFontId,
       size: safeSize,
+      sizeMode: safeSizeMode,
       createdAt: existing?.createdAt || createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       config: safeConfig,
@@ -2412,6 +2544,7 @@
       sound: appStore.future.sound,
       fontId: state.fontId,
       size: state.size,
+      sizeMode: state.sizeMode,
     });
     if (duplicate) {
       showPresetToast({
@@ -2429,6 +2562,7 @@
       sound: appStore.future.sound,
       fontId: state.fontId,
       size: state.size,
+      sizeMode: state.sizeMode,
     });
     settingsUi.presetType = type;
     updateAllUI();
@@ -2449,6 +2583,7 @@
         sound: nextPreset.sound,
         fontId: nextPreset.fontId,
         size: nextPreset.size,
+        sizeMode: nextPreset.sizeMode,
       },
     });
   }
@@ -2462,6 +2597,7 @@
       sound: sanitizeSoundSettings(appStore.future.sound),
       fontId: normalizeFontId(state.fontId),
       size: normalizeScaleValue(state.size),
+      sizeMode: normalizeScaleMode(state.sizeMode, DEFAULT_STATE.sizeMode),
     };
   }
 
@@ -2472,7 +2608,12 @@
     setUnit(snapshot.unit);
     appStore.future.sound = sanitizeSoundSettings(snapshot.sound || appStore.future.sound);
     if (snapshot.fontId) setFont(snapshot.fontId);
-    if (snapshot.size != null) setScale(snapshot.size);
+    if (snapshot.size != null || snapshot.sizeMode != null) {
+      setScale({
+        size: snapshot.size ?? state.size,
+        mode: snapshot.sizeMode ?? SCALE_FIXED_MODE,
+      });
+    }
     updateAllUI();
     resetToIdleState();
     persistStore();
@@ -2559,6 +2700,7 @@
       sound: preset.sound,
       fontId: preset.fontId,
       size: preset.size,
+      sizeMode: preset.sizeMode,
     });
     if (duplicate) {
       showPresetToast({
@@ -2583,6 +2725,7 @@
       sound: preset.sound,
       fontId: preset.fontId,
       size: preset.size,
+      sizeMode: preset.sizeMode,
     });
     settingsUi.presetType = preset.type;
     renderSettingsUI();
@@ -2598,6 +2741,7 @@
         sound: nextPreset.sound,
         fontId: nextPreset.fontId,
         size: nextPreset.size,
+        sizeMode: nextPreset.sizeMode,
       },
     });
   }
@@ -2729,6 +2873,7 @@
           sound: preset.sound,
           fontId: preset.fontId,
           size: preset.size,
+          sizeMode: preset.sizeMode,
         });
         settingsUi.presetType = preset.type;
         logHistory("preset_loaded", {
@@ -2742,6 +2887,7 @@
             sound: preset.sound,
             fontId: preset.fontId,
             size: preset.size,
+            sizeMode: preset.sizeMode,
           },
         });
         closeSettings();
@@ -2777,6 +2923,7 @@
           sound: preset.sound,
           fontId: preset.fontId,
           size: preset.size,
+          sizeMode: preset.sizeMode,
           createdAt: preset.createdAt,
         });
         renderSettingsUI();
@@ -2791,6 +2938,7 @@
             sound: nextPreset.sound,
             fontId: nextPreset.fontId,
             size: nextPreset.size,
+            sizeMode: nextPreset.sizeMode,
           },
         });
       });
@@ -2816,6 +2964,7 @@
           sound: preset.sound,
           fontId: preset.fontId,
           size: preset.size,
+          sizeMode: preset.sizeMode,
         };
         appStore.presets = appStore.presets.filter(item => item.id !== preset.id);
         persistStore();
@@ -3135,6 +3284,7 @@
       sound: appStore.future.sound,
       fontId: state.fontId,
       size: state.size,
+      sizeMode: state.sizeMode,
     });
     if (duplicate) {
       showPresetToast({
@@ -3152,6 +3302,7 @@
       sound: appStore.future.sound,
       fontId: state.fontId,
       size: state.size,
+      sizeMode: state.sizeMode,
     });
     if (els.settingsPresetName) els.settingsPresetName.value = "";
     updateAllUI();
@@ -3172,6 +3323,7 @@
         sound: nextPreset.sound,
         fontId: nextPreset.fontId,
         size: nextPreset.size,
+        sizeMode: nextPreset.sizeMode,
       },
     });
   }
@@ -3357,14 +3509,69 @@
     }
   }
 
+  function syncAdaptiveScale(signature) {
+    if (!isAdaptiveScaleMode()) {
+      adaptiveScaleSignature = "";
+      return;
+    }
+    const nextSignature = String(signature || "");
+    if (adaptiveScaleSignature === nextSignature) return;
+    adaptiveScaleSignature = nextSignature;
+    applyScale();
+  }
+
+  function resolveAdaptiveScale(sizeMode = state.sizeMode) {
+    const option = scaleModeOptionById(sizeMode);
+    const fallback = normalizeScaleValue(state.size) / 100;
+    if (!option || !els.timerText || !timerFrame) return fallback;
+
+    const baseWidth = Math.max(1, els.timerText.offsetWidth || els.timerText.scrollWidth || 1);
+    const baseHeight = Math.max(1, els.timerText.offsetHeight || 1);
+    const frameRect = timerFrame.getBoundingClientRect();
+    const frameWidth = Math.max(120, frameRect.width || timerFrame.clientWidth || window.innerWidth || 320);
+    const frameHeight = Math.max(64, frameRect.height || timerFrame.clientHeight || Math.round(window.innerHeight * 0.32) || 120);
+    const stageRect = els.stage?.getBoundingClientRect();
+    const viewportWidth = Math.max(
+      window.innerWidth || 0,
+      document.documentElement?.clientWidth || 0,
+      frameWidth,
+    );
+    const stageWidth = Math.max(frameWidth, stageRect?.width || 0);
+    const isMobile = isMobileUiMode();
+    const widthFill = isMobile ? option.mobileFill : option.desktopFill;
+    const heightFill = isMobile ? option.mobileHeightFill : option.desktopHeightFill;
+    const availableWidth = isMobile
+      ? Math.max(frameWidth, stageWidth * 0.98, viewportWidth * 0.985)
+      : Math.max(frameWidth, stageWidth * 0.96, viewportWidth * 0.95);
+    const targetWidth = Math.max(80, availableWidth * widthFill);
+    const targetHeight = Math.max(48, frameHeight * heightFill);
+
+    const scaleByWidth = targetWidth / baseWidth;
+    const scaleByHeight = targetHeight / baseHeight;
+    const heightSafety = isMobile ? 1.2 : 1.9;
+    const computed = Math.min(scaleByWidth, scaleByHeight * heightSafety);
+    if (!Number.isFinite(computed) || computed <= 0) return fallback;
+    return clamp(computed, 0.1, 4);
+  }
+
   function applyScale() {
-    const scale = clamp(state.size, 10, 200) / 100;
-    const size = clamp(state.size, 10, 200);
+    const mode = normalizeScaleMode(state.sizeMode, DEFAULT_STATE.sizeMode);
+    if (mode === SCALE_FIXED_MODE) adaptiveScaleSignature = "";
+    const size = normalizeScaleValue(state.size);
+    const scale = mode === SCALE_FIXED_MODE ? size / 100 : resolveAdaptiveScale(mode);
+    const resolvedPercent = normalizeScaleValue(Math.round(scale * 100));
     const splashScale = clamp(0.5 + scale * 0.5, 0.55, 1.5);
-    if (els.sizeValue) els.sizeValue.textContent = formatScaleLabel(size);
-    if (els.sizeButton) els.sizeButton.title = `Scale ${formatScaleLabel(size)}`;
-    els.dockSizeValue.textContent = formatScaleLabel(size);
-    els.dockSizeBtn.title = `Scale ${formatScaleLabel(size)}`;
+    const option = scaleModeOptionById(mode);
+    const label = mode === SCALE_FIXED_MODE ? formatScaleLabel(size, mode) : (option?.compact || "ADJ");
+    const titleValue = mode === SCALE_FIXED_MODE
+      ? formatScaleLabel(size, mode)
+      : `${option?.label || "ADJUST"} · ${resolvedPercent}%`;
+
+    appliedScalePercent = resolvedPercent;
+    if (els.sizeValue) els.sizeValue.textContent = label;
+    if (els.sizeButton) els.sizeButton.title = `Scale ${titleValue}`;
+    els.dockSizeValue.textContent = label;
+    els.dockSizeBtn.title = `Scale ${titleValue}`;
     els.timerText.style.transform = `scale(${scale})`;
     document.documentElement.style.setProperty("--phase-splash-scale", String(splashScale));
     scheduleClockMeridiemPosition();
@@ -3565,21 +3772,7 @@
       if (!(node instanceof HTMLElement)) return false;
       return node.classList.contains("dot") || String(node.textContent || "").includes(".");
     });
-    let millisecondTailWidth = 0;
-    if (dotIndex >= 0) {
-      let tailLeft = Infinity;
-      let tailRight = -Infinity;
-      timerChars.slice(dotIndex).forEach(node => {
-        const rect = node.getBoundingClientRect();
-        if (!rect || rect.width < 1 || rect.height < 1) return;
-        tailLeft = Math.min(tailLeft, rect.left);
-        tailRight = Math.max(tailRight, rect.right);
-      });
-      if (Number.isFinite(tailLeft) && Number.isFinite(tailRight) && tailRight > tailLeft) {
-        millisecondTailWidth = tailRight - tailLeft;
-      }
-    }
-    const hasMilliseconds = millisecondTailWidth > 0;
+    const hasMilliseconds = dotIndex >= 0;
     let fontSize = styleId === "slanted" ? slantedSize : (isBadge ? badgeSize : inlineSize);
 
     els.clockMeridiem.style.fontSize = `${fontSize}px`;
@@ -3600,17 +3793,14 @@
       }
     }
     const widthRatio = textRect.width / Math.max(frameRect.width, 1);
-    const sizeRatio = clamp((state.size - 50) / 150, 0, 1);
-    const crowdRatio = clamp((widthRatio - (isMobile ? 0.42 : 0.48)) / (isMobile ? 0.46 : 0.4), 0, 1);
+    const sizeRatio = clamp((appliedScalePercent - 50) / 150, 0, 1);
+    const crowdRatioBase = clamp((widthRatio - (isMobile ? 0.42 : 0.48)) / (isMobile ? 0.46 : 0.4), 0, 1);
+    const crowdRatio = isAfter && hasMilliseconds ? crowdRatioBase * 0.62 : crowdRatioBase;
     const stress = Math.max(sizeRatio, crowdRatio);
 
     const sideBase = Math.max(isBadge ? 18 : 14, textRect.height * (isBadge ? 0.22 : 0.17));
-    const precisionBoost = isAfter && hasMilliseconds
-      ? millisecondTailWidth * (isMobile ? 0.92 : 0.74)
-      : 0;
     const sideBoost = (isMobile ? 1.28 : 1) * (isBadge ? width * 0.18 : width * 0.12)
-      + stress * Math.max(18, textRect.height * (isMobile ? 0.32 : 0.24))
-      + precisionBoost;
+      + stress * Math.max(18, textRect.height * (isMobile ? 0.32 : 0.24));
     const sideGap = sideBase + sideBoost;
     const centerY = textRect.top - frameRect.top + textRect.height * 0.5;
     let left = textRect.right - frameRect.left + sideGap + width * 0.5;
@@ -3645,8 +3835,7 @@
       minTop = Math.min(minTop, -height * 0.3);
     }
     if (isAfter) {
-      const afterOverflow = width * (isMobile ? 0.45 : 0.34)
-        + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.78 : 0.62) : 0);
+      const afterOverflow = width * (isMobile ? 0.45 : 0.34);
       maxLeft = Math.max(maxLeft, frameRect.width + afterOverflow);
     }
     left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
@@ -3675,7 +3864,7 @@
       if (isBefore) {
         left = localTextRect.left - extraShift;
       } else if (isAfter) {
-        left = localTextRect.right + extraShift + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.36 : 0.26) : 0);
+        left = localTextRect.right + extraShift;
       }
       if (isBeforeInline) {
         top -= Math.max(height * 0.26, textRect.height * (0.2 + stress * 0.22));
@@ -3692,8 +3881,7 @@
         top -= Math.max(height * 0.18, textRect.height * (isBeforeInline ? 0.22 : 0.12));
       } else if (isAfter) {
         left = localTextRect.right
-          + Math.max(width * 0.9, textRect.height * (0.74 + stress * 0.34))
-          + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.52 : 0.4) : 0);
+          + Math.max(width * 0.9, textRect.height * (0.74 + stress * 0.34));
         top -= Math.max(height * 0.1, textRect.height * 0.06);
       }
       left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
@@ -4013,6 +4201,7 @@
       els.timerText.appendChild(span);
     }
     els.timerButton.setAttribute("aria-label", `Timer ${value}`);
+    syncAdaptiveScale(`${state.type}:${value.length}:${value.includes(".") ? 1 : 0}`);
     if (state.type !== "clock") {
       setClockMeridiem("");
     }
@@ -4094,6 +4283,7 @@
     }
 
     els.timerButton.setAttribute("aria-label", `Timer ${value}`);
+    syncAdaptiveScale(`clock:${formatKey}:${value.length}`);
     clockRenderedText = value;
     clockRenderedFormatKey = formatKey;
     scheduleTimerOverlayLayoutSync();
@@ -4579,7 +4769,7 @@
     }
 
     if (picker.kind === "size") {
-      setScale(Number(picker.selection[0] || state.size));
+      setScale(picker.selection[0] || scalePickerSelectionValue());
       updateAllUI();
       return;
     }
@@ -4633,7 +4823,12 @@
       setUnit(preset.unit);
       appStore.future.sound = sanitizeSoundSettings(preset.sound || appStore.future.sound);
       if (preset.fontId) setFont(preset.fontId);
-      if (preset.size != null) setScale(preset.size);
+      if (preset.size != null || preset.sizeMode != null) {
+        setScale({
+          size: preset.size ?? state.size,
+          mode: preset.sizeMode ?? SCALE_FIXED_MODE,
+        });
+      }
       updateAllUI();
       return;
     }
@@ -4867,9 +5062,9 @@
 
     if (kind === "size") {
       els.pickerLabel.textContent = "Scale";
-      els.pickerDesc.textContent = "10% to 200%";
+      els.pickerDesc.textContent = "ADJUST L/M/S or 10% to 200%";
       picker.columns = buildScaleColumns();
-      picker.selection = [state.size];
+      picker.selection = [scalePickerSelectionValue()];
       renderPicker(picker.columns);
       return;
     }
@@ -5059,7 +5254,7 @@
     }
 
     if (picker.kind === "size") {
-      setScale(Number(picker.selection[0] || state.size));
+      setScale(picker.selection[0] || scalePickerSelectionValue());
       updateAllUI();
       persistStore();
       closePicker();
@@ -5132,6 +5327,9 @@
     if (!hydration.loaded || !hydration.hasSize) {
       state.size = DEFAULT_STATE.size;
     }
+    if (!hydration.loaded || !hydration.hasScaleMode) {
+      state.sizeMode = DEFAULT_STATE.sizeMode;
+    }
     initClockMeridiemObservers();
     appStore.future.sound = sanitizeSoundSettings({
       ...appStore.future.sound,
@@ -5142,7 +5340,7 @@
     document.body.classList.toggle("is-minimal", !state.uiVisible);
     syncSideRailPlacement();
     setFont(state.fontId);
-    setScale(state.size);
+    setScale({ size: state.size, mode: state.sizeMode });
     setUnit(state.unit);
     updateAllUI();
     resetToIdleState();
@@ -5759,9 +5957,9 @@
 
     if (kind === "size") {
       els.pickerLabel.textContent = "Scale";
-      els.pickerDesc.textContent = "10% to 200%";
+      els.pickerDesc.textContent = "ADJUST L/M/S or 10% to 200%";
       picker.columns = buildScaleColumns();
-      picker.selection = [state.size];
+      picker.selection = [scalePickerSelectionValue()];
       renderPicker(picker.columns);
       return;
     }
@@ -5966,7 +6164,7 @@
     }
 
     if (picker.kind === "size") {
-      setScale(Number(picker.selection[0] || state.size));
+      setScale(picker.selection[0] || scalePickerSelectionValue());
       updateAllUI();
       persistStore();
       closePicker({ restorePreview: false });
@@ -6034,6 +6232,7 @@
           sound: preset.sound,
           fontId: preset.fontId,
           size: preset.size,
+          sizeMode: preset.sizeMode,
         });
         logHistory("preset_loaded", {
           type: preset.type,
@@ -6046,6 +6245,7 @@
             sound: preset.sound,
             fontId: preset.fontId,
             size: preset.size,
+            sizeMode: preset.sizeMode,
           },
         });
       }
@@ -6088,6 +6288,7 @@
         sound: preset.sound,
         fontId: preset.fontId,
         size: preset.size,
+        sizeMode: preset.sizeMode,
         excludeId: preset.id,
       });
       if (duplicate) {
@@ -6107,6 +6308,7 @@
         sound: preset.sound,
         fontId: preset.fontId,
         size: preset.size,
+        sizeMode: preset.sizeMode,
         createdAt: preset.createdAt,
       });
       renderSettingsUI();
@@ -6122,6 +6324,7 @@
           sound: nextPreset.sound,
           fontId: nextPreset.fontId,
           size: nextPreset.size,
+          sizeMode: nextPreset.sizeMode,
         },
       });
       closePicker({ restorePreview: false });
@@ -6171,6 +6374,7 @@
         sound: preset.sound,
         fontId: preset.fontId,
         size: preset.size,
+        sizeMode: preset.sizeMode,
         excludeId: preset.id,
       });
       if (duplicate) {
@@ -6190,6 +6394,7 @@
         sound: preset.sound,
         fontId: preset.fontId,
         size: preset.size,
+        sizeMode: preset.sizeMode,
         createdAt: preset.createdAt,
       });
       renderSettingsUI();
@@ -6205,6 +6410,7 @@
           sound: nextPreset.sound,
           fontId: nextPreset.fontId,
           size: nextPreset.size,
+          sizeMode: nextPreset.sizeMode,
         },
       });
       closePicker({ restorePreview: false });
@@ -6217,6 +6423,9 @@
     if (!hydration.loaded || !hydration.hasSize) {
       state.size = DEFAULT_STATE.size;
     }
+    if (!hydration.loaded || !hydration.hasScaleMode) {
+      state.sizeMode = DEFAULT_STATE.sizeMode;
+    }
     initClockMeridiemObservers();
     appStore.future.sound = sanitizeSoundSettings({
       ...appStore.future.sound,
@@ -6227,7 +6436,7 @@
     document.body.classList.toggle("is-minimal", !state.uiVisible);
     syncSideRailPlacement();
     setFont(state.fontId);
-    setScale(state.size);
+    setScale({ size: state.size, mode: state.sizeMode });
     setUnit(state.unit);
     updateAllUI();
     resetToIdleState();
@@ -6735,10 +6944,13 @@
 
   function buildScaleColumns() {
     return [{
-      value: state.size,
-      items: SIZE_OPTIONS.map(value => ({ value, label: formatScaleLabel(value) })),
+      value: scalePickerSelectionValue(),
+      items: [
+        ...SCALE_MODE_OPTIONS.map(option => ({ value: option.id, label: option.label })),
+        ...SIZE_OPTIONS.map(value => ({ value: String(value), label: formatScaleLabel(value, SCALE_FIXED_MODE) })),
+      ],
       render: item => item.label,
-      parse: raw => Number(raw),
+      parse: raw => String(raw),
     }];
   }
 
@@ -9535,8 +9747,13 @@
     setFontText();
   }
 
-  function setScale(size) {
-    state.size = clamp(Number(size) || 100, 10, 200);
+  function setScale(size, mode = null) {
+    const next = parseScaleChoice(
+      mode == null ? size : { size, mode },
+      { fallbackSize: state.size, fallbackMode: state.sizeMode },
+    );
+    state.size = next.size;
+    state.sizeMode = next.mode;
     applyScale();
   }
 
