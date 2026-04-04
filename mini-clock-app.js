@@ -3620,6 +3620,7 @@
     const height = Math.max(42, els.alarmDisplayToggle.offsetHeight || 50);
     const gapX = Math.max(10, textRect.height * 0.1);
     const gapY = Math.max(8, textRect.height * 0.12);
+    const baseLift = Math.max(isMobile ? 10 : 8, textRect.height * (isMobile ? 0.08 : 0.06));
     let left = textRect.right - frameRect.left + gapX + width * 0.5;
     let top = textRect.top - frameRect.top - gapY - height * 0.5;
 
@@ -3629,6 +3630,7 @@
       left = textRect.right - frameRect.left + mobileGapX + width * 0.5;
       top = leadingRect.top - frameRect.top - mobileTopLift - height * 0.5;
     }
+    top -= baseLift;
 
     const minLeft = width * 0.5 + framePadding;
     const maxLeft = frameRect.width - width * 0.5 - framePadding;
@@ -3656,14 +3658,14 @@
 
     const overlapPadding = isMobile ? 5 : 4;
     if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
-      const aboveGap = Math.max(gapY, localTextRect.height * (isMobile ? 0.28 : 0.22));
+      const aboveGap = Math.max(gapY + baseLift * 0.7, localTextRect.height * (isMobile ? 0.33 : 0.26));
       const preferredTop = localTextRect.top - aboveGap - height * 0.5;
       const relaxedMinTop = Math.min(minTop, -height * 0.45);
       top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, relaxedMinTop, maxTop);
     }
 
     if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
-      const emergencyTop = localTextRect.top - height * (isMobile ? 1.14 : 1.04);
+      const emergencyTop = localTextRect.top - height * (isMobile ? 1.24 : 1.14);
       const relaxedMinTop = -height * 0.58;
       top = clamp(emergencyTop, relaxedMinTop, maxTop);
     }
