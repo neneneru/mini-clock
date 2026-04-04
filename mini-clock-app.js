@@ -574,6 +574,7 @@
   let alarmDisplayToggleFrame = 0;
   let appliedScalePercent = normalizeScaleValue(DEFAULT_STATE.size);
   let adaptiveScaleSignature = "";
+  let minimalRestoreClickBlockUntil = 0;
 
   const picker = {
     kind: null,
@@ -6678,11 +6679,23 @@
       if (typeof PointerEvent !== "undefined" && event instanceof PointerEvent && event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+      minimalRestoreClickBlockUntil = performance.now() + 560;
       toggleMinimal(false);
     };
 
     document.addEventListener("pointerdown", restoreUiFromMinimalTap, { capture: true });
     document.addEventListener("touchstart", restoreUiFromMinimalTap, { capture: true, passive: false });
+    document.addEventListener("click", event => {
+      if (performance.now() >= minimalRestoreClickBlockUntil) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === "function") {
+        event.stopImmediatePropagation();
+      }
+    }, { capture: true });
 
     document.addEventListener("click", event => {
       if (els.settingsOverlay && !els.settingsOverlay.hidden && els.settingsPresetTypeMenu && !els.settingsPresetTypeMenu.hidden) {
