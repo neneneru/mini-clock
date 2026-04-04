@@ -1,6 +1,9 @@
 (() => {
   const $ = id => document.getElementById(id);
   const els = {
+    appRoot: document.querySelector(".app"),
+    topbar: document.querySelector(".topbar"),
+    sideRail: document.querySelector(".side-rail"),
     stage: document.querySelector(".stage"),
     timerButton: $("timerButton"),
     timerText: $("timerText"),
@@ -796,6 +799,30 @@
       return window.matchMedia("(pointer: coarse), (max-width: 820px)").matches;
     }
     return window.innerWidth <= 820;
+  }
+
+  function shouldEmbedRailInTopbar() {
+    if (typeof window.matchMedia === "function") {
+      return window.matchMedia("(max-width: 820px) and (orientation: portrait) and (pointer: coarse)").matches;
+    }
+    return window.innerWidth <= 820;
+  }
+
+  function syncSideRailPlacement() {
+    if (!els.sideRail || !els.topbar || !els.appRoot) return;
+    const targetParent = shouldEmbedRailInTopbar() ? els.topbar : els.appRoot;
+    if (els.sideRail.parentElement === targetParent) return;
+
+    if (targetParent === els.topbar) {
+      els.topbar.appendChild(els.sideRail);
+      return;
+    }
+
+    if (els.topbar.nextSibling) {
+      els.appRoot.insertBefore(els.sideRail, els.topbar.nextSibling);
+      return;
+    }
+    els.appRoot.appendChild(els.sideRail);
   }
 
   function pickerSupportsLivePreview(kind = picker.kind) {
@@ -4058,6 +4085,7 @@
   }
 
   function updateAllUI() {
+    syncSideRailPlacement();
     setTypeText();
     setTimeText();
     setPresetText();
@@ -5006,6 +5034,7 @@
 
     document.body.classList.remove("mobile-controls-open");
     document.body.classList.toggle("is-minimal", !state.uiVisible);
+    syncSideRailPlacement();
     setFont(state.fontId);
     setScale(state.size);
     setUnit(state.unit);
@@ -6090,6 +6119,7 @@
 
     document.body.classList.remove("mobile-controls-open");
     document.body.classList.toggle("is-minimal", !state.uiVisible);
+    syncSideRailPlacement();
     setFont(state.fontId);
     setScale(state.size);
     setUnit(state.unit);
@@ -6479,6 +6509,7 @@
     });
 
     window.addEventListener("resize", () => {
+      syncSideRailPlacement();
       updateAllUI();
       scheduleAlarmDisplayTogglePosition();
       syncMinimalUI();

@@ -911,7 +911,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   #dockTimeBtn{min-width:136px}
 }
 @media (hover:hover) and (pointer:fine){
-  .topbar .side-rail{
+  .side-rail{
     position:fixed;
     right:16px;
     top:50%;
@@ -928,8 +928,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     z-index:60;
     pointer-events:auto;
   }
-  .topbar .rail-item{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
-  .topbar .rail-label{
+  .side-rail .rail-item{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+  .side-rail .rail-label{
     position:static;
     order:-1;
     display:inline-flex;
@@ -955,8 +955,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     white-space:normal;
     pointer-events:none;
   }
-  .topbar .toggle-ui,.topbar .rail-button{width:42px;height:42px;margin:0}
-  .topbar .rail-icon{width:18px;height:18px}
+  .side-rail .toggle-ui,.side-rail .rail-button{width:42px;height:42px;margin:0}
+  .side-rail .rail-icon{width:18px;height:18px}
 }
 @keyframes ringExpand{
   0%{transform:scale(.25);opacity:.95}
