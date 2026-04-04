@@ -601,6 +601,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .dock button:disabled{opacity:.44;cursor:default;pointer-events:none}
 .dock button.is-primary{display:flex;align-items:center;justify-content:center;text-align:center;background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,248,238,.9));color:#121827;padding:0 14px}
 .dock button.is-primary span{font-size:14px;font-weight:800;letter-spacing:.06em;line-height:1;color:#121827}
+.dock button.is-danger{border-color:rgba(255,255,255,.3);background:linear-gradient(135deg,rgba(255,238,242,.96),rgba(255,218,226,.9));color:#7a1f39}
+.dock button.is-danger strong,.dock button.is-danger span{color:#7a1f39}
 .dock button.is-wide{grid-column:1/-1}
 .dock button.is-save{display:flex;align-items:center;justify-content:center;text-align:center}
 .dock button.is-save span{font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--text)}
@@ -826,7 +828,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .settings{display:none!important}
   .dock{display:grid!important}
   .dock-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn{
+  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn,#dockSlotResetBtn{
     min-height:46px;
     padding:8px 10px;
   }
@@ -889,11 +891,11 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     width:min(560px,calc(100svw - 20px));
     max-width:100%;
     display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(0,3fr) minmax(0,1fr);
+    grid-template-columns:1fr;
     gap:8px;
     align-items:stretch;
   }
-  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;grid-column:2;min-width:0}
+  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;grid-column:1;min-width:0}
   .slot-button--lever{
     --slot-lever-offset:0;
     position:relative;
@@ -925,6 +927,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .slot-button--reset:active{transform:none}
   .slot-button--reset::before{display:none}
   .slot-button--reset .button-label{font-size:9px}
+  .slot-button--lever,.slot-button--reset{display:none!important}
   .stopwatch-laps{grid-template-columns:1fr}
   .stage-start{grid-template-columns:1fr;width:min(100%,240px)}
   .slot-center{width:min(96vw,560px);padding:0;gap:8px;border-radius:0}
@@ -1215,9 +1218,9 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     position:relative;
     left:auto;
     top:auto;
-    transform:none;
+    transform:translateY(-16px);
     width:min(100%,260px);
-    margin:0 auto;
+    margin:0 auto -14px;
   }
   .stopwatch-start,.stopwatch-actions,.stopwatch-stats{width:100%}
   .stopwatch-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1228,11 +1231,11 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     width:min(560px,calc(100svw - 20px));
     max-width:100%;
     display:grid;
-    grid-template-columns:minmax(0,1fr) minmax(0,3fr) minmax(0,1fr);
+    grid-template-columns:1fr;
     gap:8px;
     align-items:stretch;
   }
-  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));grid-column:2;min-width:0}
+  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));grid-column:1;min-width:0}
   .slot-button--lever,.slot-button--reset{
     position:relative;
     top:auto;
@@ -1255,6 +1258,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   }
   .slot-button--reset:active{transform:none}
   .slot-button--reset::before{display:none}
+  .slot-button--lever,.slot-button--reset{display:none!important}
   .slot-dashboard{gap:4px}
   .slot-inline{gap:10px}
   .slot-inline-value{font-size:16px}
@@ -1289,7 +1293,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .dock-grid::-webkit-scrollbar{height:6px}
   .dock-grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.34);border-radius:999px}
   .dock-grid::-webkit-scrollbar-track{background:transparent}
-  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn{
+  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn,#dockSlotResetBtn{
     display:block!important;
     flex:0 0 auto;
     min-width:106px;
@@ -1319,7 +1323,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .stage{padding-bottom:calc(144px + env(safe-area-inset-bottom))}
   .dock{left:8px;right:8px;padding:6px 7px}
   .dock-grid{gap:5px}
-  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn{min-width:96px;min-height:38px}
+  #dockTypeBtn,#dockFontBtn,#dockSizeBtn,#dockUnitBtn,#dockTimeBtn,#dockSlotResetBtn{min-width:96px;min-height:38px}
   #dockTimeBtn{min-width:136px}
 }
 @media (hover:hover) and (pointer:fine){
@@ -1622,6 +1626,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
       <button type="button" id="dockSizeBtn"><strong>SIZE</strong><span id="dockSizeValue">ADJ M</span></button>
       <button type="button" id="dockUnitBtn"><strong>UNIT</strong><span id="dockUnitValue">SECONDS</span></button>
       <button type="button" class="is-primary is-wide" id="dockTimeBtn"><span id="dockTimeValue">05:00</span></button>
+      <button type="button" class="is-danger" id="dockSlotResetBtn" hidden><strong>RESET</strong><span>SLOT</span></button>
     </div>
   </section>
 </div>

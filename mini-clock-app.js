@@ -51,6 +51,7 @@
     dockSizeValue: $("dockSizeValue"),
     dockUnitBtn: $("dockUnitBtn"),
     dockUnitValue: $("dockUnitValue"),
+    dockSlotResetBtn: $("dockSlotResetBtn"),
     dockPresetBtn: $("dockPresetBtn"),
     dockPresetValue: $("dockPresetValue"),
     dockPresetSaveBtn: $("dockPresetSaveBtn"),
@@ -4566,6 +4567,14 @@
     els.dockUnitBtn.title = state.unit === "seconds" ? "SECONDS" : "H:M:S";
   }
 
+  function setDockSlotResetState() {
+    if (!els.dockSlotResetBtn) return;
+    const isSlot = state.type === "slot";
+    els.dockSlotResetBtn.hidden = !isSlot;
+    els.dockSlotResetBtn.disabled = !isSlot;
+    els.dockSlotResetBtn.title = isSlot ? "Reset slot progress and feed logs" : "";
+  }
+
   function setClockMeridiem(meridiem = "") {
     if (!els.clockMeridiem) return;
     const supportsMeridiem = state.type === "clock" || alarmUsesClockDisplay();
@@ -5435,6 +5444,7 @@
     setFontText();
     applyScale();
     setUnitText();
+    setDockSlotResetState();
     setPanelText();
     setClockControlsState();
     setModeGuide();
@@ -6488,6 +6498,7 @@
     els.dockUnitBtn.addEventListener("click", () => openPicker("unit"));
     els.dockPanelBtn?.addEventListener("click", () => openPicker("panel"));
     els.dockTimeBtn.addEventListener("click", () => openPicker("time"));
+    els.dockSlotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.settingsOpenBtn?.addEventListener("click", () => openSettings());
 
     els.applyBtn.addEventListener("click", () => applyAndStart());
@@ -7653,6 +7664,7 @@
     els.dockPresetSaveBtn?.addEventListener("click", () => quickSaveCurrentPreset());
     els.dockPanelBtn?.addEventListener("click", () => openPicker("panel"));
     els.dockTimeBtn.addEventListener("click", () => openPicker("time"));
+    els.dockSlotResetBtn?.addEventListener("click", () => requestSlotReset());
     els.settingsOpenBtn?.addEventListener("click", () => openSettings());
     els.railPresetBtn?.addEventListener("click", () => openPicker("preset"));
     els.railSoundBtn?.addEventListener("click", () => openPicker("sound"));
