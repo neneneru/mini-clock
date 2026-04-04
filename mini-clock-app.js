@@ -64,6 +64,21 @@
     stopwatchBestChip: $("stopwatchBestChip"),
     stopwatchWorstChip: $("stopwatchWorstChip"),
     stopwatchLaps: $("stopwatchLaps"),
+    slotPanel: $("slotPanel"),
+    slotStartBtn: $("slotStartBtn"),
+    slotStopLeftBtn: $("slotStopLeftBtn"),
+    slotStopCenterBtn: $("slotStopCenterBtn"),
+    slotStopRightBtn: $("slotStopRightBtn"),
+    slotSpeedChip: $("slotSpeedChip"),
+    slotStateChip: $("slotStateChip"),
+    slotAssistChip: $("slotAssistChip"),
+    slotReelLeft: $("slotReelLeft"),
+    slotReelCenter: $("slotReelCenter"),
+    slotReelRight: $("slotReelRight"),
+    slotReelValueLeft: $("slotReelValueLeft"),
+    slotReelValueCenter: $("slotReelValueCenter"),
+    slotReelValueRight: $("slotReelValueRight"),
+    slotFeed: $("slotFeed"),
     alarmBoard: $("alarmBoard"),
     alarmCards: $("alarmCards"),
     alarmDisplayToggle: $("alarmDisplayToggle"),
@@ -162,6 +177,7 @@
     { value: "clock", label: "CLOCK", desc: "Live local and world time" },
     { value: "alarm", label: "ALARM", desc: "Alert, message, and snooze" },
     { value: "stopwatch", label: "STOPWATCH", desc: "Pure elapsed time" },
+    { value: "slot", label: "SLOT", desc: "Stop three reels and chase BIG" },
     { value: "pomodoro", label: "POMODORO", desc: "Focus and breaks" },
     { value: "loop", label: "LOOP", desc: "Repeat by count" },
     { value: "interval", label: "INTERVAL", desc: "Warm up and repeat" },
@@ -396,6 +412,22 @@
     { id: "Hearth", label: "Hearth" },
     { id: "Opal", label: "Opal" },
   ];
+  const SLOT_SPEED_OPTIONS = [
+    { id: 1, label: "SPEED 1", stepMs: 196 },
+    { id: 2, label: "SPEED 2", stepMs: 168 },
+    { id: 3, label: "SPEED 3", stepMs: 146 },
+    { id: 4, label: "SPEED 4", stepMs: 126 },
+    { id: 5, label: "SPEED 5", stepMs: 109 },
+    { id: 6, label: "SPEED 6", stepMs: 94 },
+    { id: 7, label: "SPEED 7", stepMs: 80 },
+    { id: 8, label: "SPEED 8", stepMs: 68 },
+    { id: 9, label: "SPEED 9", stepMs: 57 },
+  ];
+  const SLOT_ASSIST_OPTIONS = [
+    { id: "easy", label: "EASY", snapWindow: 2, justWindowMs: 280 },
+    { id: "normal", label: "NORMAL", snapWindow: 1, justWindowMs: 200 },
+    { id: "hard", label: "HARD", snapWindow: 0, justWindowMs: 130 },
+  ];
 
   const SIZE_OPTIONS = Array.from({ length: 20 }, (_, i) => (i + 1) * 10);
   const SCALE_FIXED_MODE = "fixed";
@@ -488,6 +520,12 @@
     countdownSeconds: 300,
     countupTargetSeconds: 0,
     stopwatchStartSeconds: 0,
+    slot: {
+      speed: 5,
+      assist: "normal",
+      reelCount: 3,
+      reelDigits: 10,
+    },
     pomodoro: {
       focusSeconds: 1500,
       shortBreakSeconds: 300,
@@ -551,6 +589,16 @@
     stopwatchSort: "default",
     stopwatchRenderKey: "",
     alarmConsumedIds: [],
+    slot: {
+      spinning: false,
+      reels: [],
+      values: [7, 7, 7],
+      stopTimes: [],
+      feed: [],
+      reachActive: false,
+      spinStartedAt: 0,
+      spinId: 0,
+    },
   };
   let audioContext = null;
   let soundPreviewTimer = 0;
@@ -774,6 +822,12 @@
       countdownSeconds: source.countdownSeconds,
       countupTargetSeconds: source.countupTargetSeconds,
       stopwatchStartSeconds: source.stopwatchStartSeconds,
+      slot: {
+        speed: slotSpeedOptionById(source.slot?.speed).id,
+        assist: slotAssistOptionById(source.slot?.assist).id,
+        reelCount: 3,
+        reelDigits: 10,
+      },
       pomodoro: { ...source.pomodoro },
       loop: { ...source.loop },
       interval: { ...source.interval },
@@ -809,6 +863,12 @@
     state.countdownSeconds = next.countdownSeconds;
     state.countupTargetSeconds = next.countupTargetSeconds;
     state.stopwatchStartSeconds = next.stopwatchStartSeconds;
+    state.slot = {
+      speed: slotSpeedOptionById(next.slot?.speed).id,
+      assist: slotAssistOptionById(next.slot?.assist).id,
+      reelCount: 3,
+      reelDigits: 10,
+    };
     state.pomodoro = { ...next.pomodoro };
     state.loop = { ...next.loop };
     state.interval = { ...next.interval };
@@ -869,6 +929,7 @@
       "preset-config",
       "clock-zone",
       "clock-cityset",
+      "slot-assist",
       "alarm-repeat",
       "alarm-time",
     ].includes(kind);
@@ -890,7 +951,7 @@
     const sheet = els.pickerOverlay.querySelector(".picker-sheet");
     if (!sheet) return;
     const sheetRect = sheet.getBoundingClientRect();
-    const targets = [els.timerText, els.stageStart, els.stopwatchPanel, els.sequencePanel, els.alarmBoard];
+    const targets = [els.timerText, els.stageStart, els.stopwatchPanel, els.slotPanel, els.sequencePanel, els.alarmBoard];
     const overlap = targets.some(target => {
       if (!target || target.hidden) return false;
       const rect = target.getBoundingClientRect();
@@ -1200,6 +1261,23 @@
   function soundOptionById(id) {
     const target = String(id || "");
     return SOUND_OPTIONS.find(option => option.id === target) || SOUND_OPTIONS[0];
+  }
+
+  function slotSpeedOptionById(id) {
+    const target = clamp(Math.floor(Number(id) || 0), 1, 9);
+    return SLOT_SPEED_OPTIONS.find(option => option.id === target) || SLOT_SPEED_OPTIONS[4];
+  }
+
+  function slotAssistOptionById(id) {
+    const target = String(id || "").toLowerCase();
+    return SLOT_ASSIST_OPTIONS.find(option => option.id === target) || SLOT_ASSIST_OPTIONS[1];
+  }
+
+  function slotSummary(config = state.slot) {
+    const safe = normalizeTypeConfig("slot", config);
+    const speed = slotSpeedOptionById(safe.speed).label;
+    const assist = slotAssistOptionById(safe.assist).label;
+    return `${speed} · ${assist}`;
   }
 
   function alarmRepeatOptionById(id) {
@@ -1529,6 +1607,13 @@
         return { seconds: Math.max(0, Number(source.seconds) || 0) };
       case "stopwatch":
         return { seconds: Math.max(0, Number(source.seconds) || 0) };
+      case "slot":
+        return {
+          speed: slotSpeedOptionById(source.speed).id,
+          assist: slotAssistOptionById(source.assist).id,
+          reelCount: 3,
+          reelDigits: 10,
+        };
       case "pomodoro":
         return {
           focusSeconds: Math.max(1, Number(source.focusSeconds) || DEFAULT_STATE.pomodoro.focusSeconds),
@@ -1663,6 +1748,10 @@
       tabata: {
         ...DEFAULT_STATE.tabata,
         ...(stored.state?.tabata || {}),
+      },
+      slot: {
+        ...DEFAULT_STATE.slot,
+        ...(stored.state?.slot || {}),
       },
       scenario: cloneScenario(stored.state?.scenario || DEFAULT_SCENARIO),
     });
@@ -1914,6 +2003,8 @@
         return "Live local clock with major city times. Toggle seconds and world from the center controls.";
       case "alarm":
         return "Arm a local alarm with repeat rules, a custom message, and snooze. Repeat sets the cadence, while Time sets the ring moment and note.";
+      case "slot":
+        return "Spin three reels, stop each with timing, and aim for REACH then BIG. TIME changes reel speed, while UNIT switches assist difficulty.";
       case "pomodoro":
         return "Focus repeats in cycles. BREAK is the short reset between cycles, while LONG BREAK is the deeper reset after the final focus block.";
       case "loop":
@@ -1929,8 +2020,9 @@
 
   function currentTypePhaseLabel() {
     if (runtime.phase !== "running" || !runtime.plan) return typeLabel(state.type);
-    if (runtime.plan.kind === "countup" || runtime.plan.kind === "stopwatch" || runtime.plan.kind === "clock") {
+    if (runtime.plan.kind === "countup" || runtime.plan.kind === "stopwatch" || runtime.plan.kind === "clock" || runtime.plan.kind === "slot") {
       if (runtime.plan.kind === "clock") return "CLOCK";
+      if (runtime.plan.kind === "slot") return "SLOT";
       return runtime.plan.kind === "stopwatch" ? "STOPWATCH" : "COUNT UP";
     }
     const phase = runtime.plan.phases[runtime.phaseIndex];
@@ -1961,6 +2053,8 @@
         return "Work, rest, and rounds. Swipe, drag, type, or use arrows. Enter confirms.";
       case "stopwatch":
         return "Set the starting value. Swipe, drag, type, or use arrows. Enter confirms.";
+      case "slot":
+        return "Adjust reel speed. UNIT switches assist window. Enter confirms.";
       default:
         return "Swipe, drag, type, or use arrows. Enter confirms.";
     }
@@ -1977,6 +2071,8 @@
       case "countup":
         return state.countupTargetSeconds > 0 ? state.countupTargetSeconds : Infinity;
       case "stopwatch":
+        return Infinity;
+      case "slot":
         return Infinity;
       case "pomodoro": {
         const cycles = Math.max(1, state.pomodoro.cycles);
@@ -2008,6 +2104,8 @@
         return state.countupTargetSeconds > 0 ? formatTime(state.countupTargetSeconds) : "INF";
       case "stopwatch":
         return `START ${formatTime(state.stopwatchStartSeconds)}`;
+      case "slot":
+        return slotSummary(state.slot);
       case "pomodoro":
         return `${formatTime(state.pomodoro.focusSeconds)} / ${formatTime(state.pomodoro.shortBreakSeconds)} x${Math.max(1, state.pomodoro.cycles)}`;
       case "loop":
@@ -2033,6 +2131,9 @@
     }
     if (type === "alarm") {
       return alarmCollectionSummary();
+    }
+    if (type === "slot") {
+      return slotSummary(state.slot);
     }
     const total = totalSecondsForType(type);
     if (!Number.isFinite(total)) return "INF";
@@ -2067,6 +2168,8 @@
         return safe.seconds > 0 ? time(safe.seconds) : "INF";
       case "stopwatch":
         return `START ${time(safe.seconds)}`;
+      case "slot":
+        return slotSummary(safe);
       case "pomodoro":
         return `${time(safe.focusSeconds)} / ${time(safe.shortBreakSeconds)} / ${time(safe.longBreakSeconds)} x${safe.cycles}`;
       case "loop":
@@ -2097,6 +2200,8 @@
         return safe.seconds > 0 ? `TARGET ${time(safe.seconds)}` : "TARGET INF";
       case "stopwatch":
         return `START ${time(safe.seconds)}`;
+      case "slot":
+        return slotSummary(safe);
       case "pomodoro":
         return `F ${time(safe.focusSeconds)} · B ${time(safe.shortBreakSeconds)} · L ${time(safe.longBreakSeconds)} · x${safe.cycles}`;
       case "loop":
@@ -2315,6 +2420,8 @@
         return { seconds: Math.max(0, source.countupTargetSeconds) };
       case "stopwatch":
         return { seconds: Math.max(0, source.stopwatchStartSeconds) };
+      case "slot":
+        return normalizeTypeConfig("slot", source.slot);
       case "pomodoro":
         return {
           focusSeconds: Math.max(1, source.pomodoro.focusSeconds),
@@ -2379,6 +2486,10 @@
     }
     if (safeType === "stopwatch") {
       state.stopwatchStartSeconds = safe.seconds;
+      return;
+    }
+    if (safeType === "slot") {
+      state.slot = normalizeTypeConfig("slot", safe);
       return;
     }
     if (safeType === "pomodoro") {
@@ -2788,6 +2899,8 @@
         return "CLK";
       case "stopwatch":
         return "SW";
+      case "slot":
+        return "SLT";
       case "pomodoro":
         return "POMO";
       case "loop":
@@ -3431,6 +3544,7 @@
     const total = totalSummaryForType();
     const isClock = state.type === "clock";
     const isAlarm = state.type === "alarm";
+    const isSlot = state.type === "slot";
     if (isClock) {
       const citySet = clockCitySetById(state.clock?.citySet);
       if (els.timeLabel) els.timeLabel.textContent = "Cities";
@@ -3450,6 +3564,18 @@
       const count = alarmEntries(state).length;
       els.timeButton.title = `${time} · ${alarmDurationSummary(state.alarm)}${count > 1 ? ` · ${count} alarms` : ""}`;
       els.dockTimeBtn.title = `${time} · ${alarmDurationSummary(state.alarm)}${count > 1 ? ` · ${count} alarms` : ""}`;
+      els.timeButton.disabled = false;
+      els.dockTimeBtn.disabled = false;
+      return;
+    }
+    if (isSlot) {
+      if (els.timeLabel) els.timeLabel.textContent = "Reel";
+      const speed = slotSpeedOptionById(state.slot?.speed).label;
+      els.timeValue.textContent = speed;
+      els.dockTimeValue.textContent = speed;
+      const assist = slotAssistOptionById(state.slot?.assist).label;
+      els.timeButton.title = `${speed} · Assist ${assist}`;
+      els.dockTimeBtn.title = `${speed} · Assist ${assist}`;
       els.timeButton.disabled = false;
       els.dockTimeBtn.disabled = false;
       return;
@@ -3483,7 +3609,11 @@
 
   function setPanelText() {
     const label = state.detailPanelVisible ? "HIDE" : "SHOW";
-    const panelName = state.type === "alarm" ? "alarm board" : "progress panel";
+    const panelName = state.type === "alarm"
+      ? "alarm board"
+      : state.type === "slot"
+        ? "slot panel"
+        : "progress panel";
     if (els.panelValue) els.panelValue.textContent = label;
     if (els.dockPanelValue) els.dockPanelValue.textContent = label;
     if (els.panelButton) els.panelButton.title = `${panelName} ${label.toLowerCase()}`;
@@ -3647,11 +3777,12 @@
   function setUnitText() {
     const isClock = state.type === "clock";
     const isAlarm = state.type === "alarm";
+    const isSlot = state.type === "slot";
     const dockLabel = els.dockUnitBtn?.querySelector("strong");
-    if (dockLabel) dockLabel.textContent = isClock ? "ZONE" : isAlarm ? "REPEAT" : "UNIT";
-    if (els.unitLabel) els.unitLabel.textContent = isClock ? "Zone" : isAlarm ? "Repeat" : "Unit";
-    if (els.clockAnimButton) els.clockAnimButton.hidden = !(isClock || isAlarm);
-    if (els.unitSegment) els.unitSegment.hidden = isClock || isAlarm;
+    if (dockLabel) dockLabel.textContent = isClock ? "ZONE" : isAlarm ? "REPEAT" : isSlot ? "ASSIST" : "UNIT";
+    if (els.unitLabel) els.unitLabel.textContent = isClock ? "Zone" : isAlarm ? "Repeat" : isSlot ? "Assist" : "Unit";
+    if (els.clockAnimButton) els.clockAnimButton.hidden = !(isClock || isAlarm || isSlot);
+    if (els.unitSegment) els.unitSegment.hidden = isClock || isAlarm || isSlot;
     if (isClock) {
       const zone = clockZoneOptionById(state.clock?.zoneId);
       const compact = clockZoneCompactLabel(zone);
@@ -3668,6 +3799,14 @@
       if (els.clockAnimButton) els.clockAnimButton.title = `Repeat cadence · ${repeat}`;
       els.dockUnitValue.textContent = repeat;
       els.dockUnitBtn.title = `Repeat cadence · ${repeat}`;
+      return;
+    }
+    if (isSlot) {
+      const assist = slotAssistOptionById(state.slot?.assist).label;
+      if (els.clockAnimValue) els.clockAnimValue.textContent = assist;
+      if (els.clockAnimButton) els.clockAnimButton.title = `Assist difficulty · ${assist}`;
+      els.dockUnitValue.textContent = assist;
+      els.dockUnitBtn.title = `Assist difficulty · ${assist}`;
       return;
     }
     [...els.unitSegment.querySelectorAll("button[data-unit]")].forEach(button => {
@@ -4454,6 +4593,11 @@
       renderDigits(formatClock(Math.max(0, state.stopwatchStartSeconds || 0)));
       return;
     }
+    if (state.type === "slot") {
+      const values = runtime.slot?.values?.length === 3 ? runtime.slot.values : [7, 7, 7];
+      renderDigits(values.map(value => clamp(Math.floor(Number(value) || 0), 0, 9)).join(""));
+      return;
+    }
     if (state.type === "scenario" && state.scenario.length > 0) {
       renderDigits(formatClock(Math.max(1, state.scenario[0].seconds)));
       return;
@@ -4490,13 +4634,14 @@
   function renderStageControls() {
     if (!els.applyBtn || !els.stagePauseBtn || !els.stageResetBtn) return;
     const isStopwatch = state.type === "stopwatch";
+    const isSlot = state.type === "slot";
     const isClock = state.type === "clock";
     const isAlarm = state.type === "alarm";
-    if (els.stageStart) els.stageStart.hidden = isClock;
+    if (els.stageStart) els.stageStart.hidden = isClock || isSlot;
     const hasSequenceSkip = isSequenceDetailType() && !isStopwatch;
     const pauseDisabled = isAlarm
       ? (runtime.phase !== "running" && runtime.phase !== "paused")
-      : isStopwatch || isClock || (runtime.phase !== "running" && runtime.phase !== "paused");
+      : isStopwatch || isSlot || isClock || (runtime.phase !== "running" && runtime.phase !== "paused");
     els.stagePauseBtn.disabled = pauseDisabled;
     setButtonLabel(
       els.stagePauseBtn,
@@ -4504,11 +4649,19 @@
         ? (runtime.phase === "paused" ? "ARM" : "OFF")
         : runtime.phase === "paused" && !isStopwatch ? "RESUME" : "PAUSE",
     );
-    els.stageResetBtn.disabled = isStopwatch || isClock || (isAlarm && runtime.phase === "idle");
+    els.stageResetBtn.disabled = isStopwatch || isSlot || isClock || (isAlarm && runtime.phase === "idle");
     setButtonLabel(els.stageResetBtn, "RESET");
     setButtonShortcut(els.stageResetBtn, hasSequenceSkip ? "4" : "3");
-    setButtonLabel(els.applyBtn, isAlarm ? (runtime.phase === "running" ? "RE-ALARM" : "ALARM") : "START");
+    setButtonLabel(
+      els.applyBtn,
+      isSlot
+        ? (runtime.phase === "running" ? "RESPIN" : "SPIN")
+        : isAlarm
+          ? (runtime.phase === "running" ? "RE-ALARM" : "ALARM")
+          : "START",
+    );
     els.stage?.classList.toggle("has-clock", isClock);
+    els.stage?.classList.toggle("has-slot", isSlot && !document.body.classList.contains("is-minimal"));
     els.stage?.classList.toggle("has-alarm", state.type === "alarm" && state.detailPanelVisible && !document.body.classList.contains("is-minimal"));
     if (els.stageSkipBtn) {
       els.stageSkipBtn.disabled = !hasSequenceSkip || (runtime.phase !== "running" && runtime.phase !== "paused");
@@ -4543,6 +4696,7 @@
     renderClockWorld();
     renderAlarmBoard();
     renderStopwatchPanel();
+    renderSlotPanel();
     let handledAlarmRuntime = false;
     if (runtime.plan?.kind === "alarm" && runtime.phase === "running") {
       renderAlarmRuntime(nowPreciseMs());
@@ -4590,6 +4744,15 @@
       setPreview(typeLabel(state.type));
       setDurationPill(alarmDurationSummary(runtime.plan.config || state.alarm), "OFF");
       renderAlarmBoard();
+      return;
+    }
+    if (runtime.plan.kind === "slot") {
+      setClockMeridiem("");
+      renderDigits(slotDisplayValue(runtime.slot?.values));
+      setStatus("READY");
+      setPreview(typeLabel(state.type));
+      setDurationPill(totalSummaryForType(), "Ready");
+      renderSlotPanel();
       return;
     }
     if (runtime.plan.kind === "countup" || runtime.plan.kind === "stopwatch") {
@@ -4640,6 +4803,14 @@
       } else {
         state.stopwatchStartSeconds = Math.max(0, Number(selection[0]) || 0);
       }
+      return;
+    }
+
+    if (kind === "slot") {
+      state.slot = normalizeTypeConfig("slot", {
+        ...state.slot,
+        speed: slotSpeedOptionById(selection[0]).id,
+      });
       return;
     }
 
@@ -4919,6 +5090,15 @@
 
     if (picker.kind === "unit") {
       setUnit(String(picker.selection[0] || "seconds"));
+      updateAllUI();
+      return;
+    }
+
+    if (picker.kind === "slot-assist") {
+      state.slot = normalizeTypeConfig("slot", {
+        ...state.slot,
+        assist: picker.selection[0],
+      });
       updateAllUI();
       return;
     }
@@ -5245,6 +5425,23 @@
         renderAlarmRepeatEditor(state.alarm);
         return;
       }
+      if (state.type === "slot") {
+        els.pickerLabel.textContent = "Assist";
+        els.pickerDesc.textContent = "EASY gives a wider snap window. HARD stays true manual.";
+        picker.kind = "slot-assist";
+        picker.columns = [{
+          value: slotAssistOptionById(state.slot?.assist).id,
+          items: SLOT_ASSIST_OPTIONS.map(option => ({
+            value: option.id,
+            label: option.label,
+          })),
+          render: item => item.label,
+          parse: raw => String(raw),
+        }];
+        picker.selection = [picker.columns[0].value];
+        renderPicker(picker.columns);
+        return;
+      }
       els.pickerLabel.textContent = "Unit";
       els.pickerDesc.textContent = "Seconds or clock";
       picker.columns = buildUnitColumns();
@@ -5327,7 +5524,7 @@
         renderScenarioEditor();
         return;
       }
-      els.pickerLabel.textContent = "Time";
+      els.pickerLabel.textContent = activeKind === "slot" ? "Reel" : "Time";
       picker.columns = buildTimeColumns(activeKind);
       picker.selection = picker.columns.map(column => column.value);
       els.pickerDesc.textContent = activeKind === "countup"
@@ -5546,6 +5743,14 @@
       }
       applyAndStart();
     });
+    els.slotStartBtn?.addEventListener("click", () => applyAndStart());
+    els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
+    els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
+    els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
+    els.slotStartBtn?.addEventListener("click", () => applyAndStart());
+    els.slotStopLeftBtn?.addEventListener("click", () => stopSlotReelByIndex(0));
+    els.slotStopCenterBtn?.addEventListener("click", () => stopSlotReelByIndex(1));
+    els.slotStopRightBtn?.addEventListener("click", () => stopSlotReelByIndex(2));
     els.stagePauseBtn?.addEventListener("click", () => {
       if (runtime.phase === "running") {
         pauseTimer();
@@ -5600,6 +5805,10 @@
     els.timerButton.addEventListener("click", () => {
       if (state.type === "clock") {
         ensureClockTicker({ force: true });
+        return;
+      }
+      if (state.type === "slot") {
+        applyAndStart();
         return;
       }
       if (runtime.phase === "running") {
@@ -5728,6 +5937,14 @@
       } else {
         state.stopwatchStartSeconds = Math.max(0, Number(selection[0]) || 0);
       }
+      return;
+    }
+
+    if (kind === "slot") {
+      state.slot = normalizeTypeConfig("slot", {
+        ...state.slot,
+        speed: slotSpeedOptionById(selection[0]).id,
+      });
       return;
     }
 
@@ -6140,6 +6357,23 @@
         renderAlarmRepeatEditor(state.alarm);
         return;
       }
+      if (state.type === "slot") {
+        els.pickerLabel.textContent = "Assist";
+        els.pickerDesc.textContent = "EASY gives a wider snap window. HARD stays true manual.";
+        picker.kind = "slot-assist";
+        picker.columns = [{
+          value: slotAssistOptionById(state.slot?.assist).id,
+          items: SLOT_ASSIST_OPTIONS.map(option => ({
+            value: option.id,
+            label: option.label,
+          })),
+          render: item => item.label,
+          parse: raw => String(raw),
+        }];
+        picker.selection = [picker.columns[0].value];
+        renderPicker(picker.columns);
+        return;
+      }
       els.pickerLabel.textContent = "Unit";
       els.pickerDesc.textContent = "Seconds or clock";
       picker.columns = buildUnitColumns();
@@ -6224,7 +6458,7 @@
         renderScenarioEditor();
         return;
       }
-      els.pickerLabel.textContent = "Time";
+      els.pickerLabel.textContent = activeKind === "slot" ? "Reel" : "Time";
       picker.columns = buildTimeColumns(activeKind);
       picker.selection = picker.columns.map(column => column.value);
       els.pickerDesc.textContent = timePickerDescription(activeKind);
@@ -6319,6 +6553,18 @@
       updateAllUI();
       persistStore();
       closePicker({ restorePreview: false });
+      return;
+    }
+
+    if (picker.kind === "slot-assist") {
+      state.slot = normalizeTypeConfig("slot", {
+        ...state.slot,
+        assist: picker.selection[0],
+      });
+      updateAllUI();
+      persistStore();
+      closePicker({ restorePreview: false });
+      resetToIdleState();
       return;
     }
 
@@ -6710,6 +6956,10 @@
         ensureClockTicker({ force: true });
         return;
       }
+      if (state.type === "slot") {
+        applyAndStart();
+        return;
+      }
       if (runtime.phase === "running") {
         pauseTimer();
         return;
@@ -6931,6 +7181,29 @@
         Boolean(target.closest("input,textarea,select,[contenteditable='true']"))
       );
       if (isTypingTarget) return;
+
+      if (els.pickerOverlay.hidden && state.type === "slot") {
+        if (event.key === "1" || event.key === "Enter" || event.key === " " || event.key === "Spacebar") {
+          event.preventDefault();
+          applyAndStart();
+          return;
+        }
+        if (event.key === "2") {
+          event.preventDefault();
+          stopSlotReelByIndex(0);
+          return;
+        }
+        if (event.key === "3") {
+          event.preventDefault();
+          stopSlotReelByIndex(1);
+          return;
+        }
+        if (event.key === "4") {
+          event.preventDefault();
+          stopSlotReelByIndex(2);
+          return;
+        }
+      }
 
       if (event.key.toLowerCase() === "u") {
         toggleMinimal();
@@ -7725,6 +7998,17 @@
       );
       return columns;
     }
+    if (kind === "slot") {
+      return [{
+        value: slotSpeedOptionById(config.speed).id,
+        items: SLOT_SPEED_OPTIONS.map(option => ({
+          value: option.id,
+          label: option.label,
+        })),
+        render: item => item.label,
+        parse: raw => Number(raw),
+      }];
+    }
     if (kind === "countdown") {
       return unit === "clock"
         ? buildClockColumns(config.seconds)
@@ -7824,6 +8108,12 @@
         : Number(selection[0]) || 0;
       return normalizeTypeConfig(kind, {
         seconds: Math.max(kind === "countdown" ? 1 : 0, seconds),
+      });
+    }
+    if (kind === "slot") {
+      return normalizeTypeConfig("slot", {
+        ...(options.config || state.slot),
+        speed: slotSpeedOptionById(selection[0]).id,
       });
     }
     if (kind === "pomodoro") {
@@ -7926,6 +8216,13 @@
         });
       }
       return fields;
+    }
+
+    if (kind === "slot") {
+      const [speed = state.slot.speed] = picker.selection;
+      return [
+        { label: "SPEED", value: speed, min: 1, max: 9, step: 1 },
+      ];
     }
 
     if (kind === "pomodoro") {
@@ -8197,6 +8494,400 @@
     pauseTimer();
   }
 
+  function ensureSlotRuntimeState() {
+    if (!runtime.slot || typeof runtime.slot !== "object") {
+      runtime.slot = {
+        spinning: false,
+        reels: [],
+        values: [7, 7, 7],
+        stopTimes: [],
+        feed: [],
+        reachActive: false,
+        spinStartedAt: 0,
+        spinId: 0,
+      };
+    }
+    if (!Array.isArray(runtime.slot.values) || runtime.slot.values.length !== 3) {
+      runtime.slot.values = [7, 7, 7];
+    }
+    runtime.slot.values = runtime.slot.values.map(value => clamp(Math.floor(Number(value) || 0), 0, 9));
+    if (!Array.isArray(runtime.slot.reels)) runtime.slot.reels = [];
+    if (!Array.isArray(runtime.slot.stopTimes)) runtime.slot.stopTimes = [];
+    if (!Array.isArray(runtime.slot.feed)) runtime.slot.feed = [];
+  }
+
+  function slotReelNodes() {
+    return [
+      { root: els.slotReelLeft, value: els.slotReelValueLeft },
+      { root: els.slotReelCenter, value: els.slotReelValueCenter },
+      { root: els.slotReelRight, value: els.slotReelValueRight },
+    ];
+  }
+
+  function slotDisplayValue(values = runtime.slot?.values) {
+    const safe = Array.isArray(values) && values.length === 3 ? values : [7, 7, 7];
+    return safe.map(value => String(clamp(Math.floor(Number(value) || 0), 0, 9))).join("");
+  }
+
+  function slotCircularDistance(from, to, modulo = 10) {
+    const safeModulo = Math.max(2, Math.floor(Number(modulo) || 10));
+    const a = ((Math.floor(Number(from) || 0) % safeModulo) + safeModulo) % safeModulo;
+    const b = ((Math.floor(Number(to) || 0) % safeModulo) + safeModulo) % safeModulo;
+    const forward = (a - b + safeModulo) % safeModulo;
+    return Math.min(forward, safeModulo - forward);
+  }
+
+  function slotStepMsForReel(speed, reelIndex = 0) {
+    const base = slotSpeedOptionById(speed).stepMs;
+    return clamp(Math.round(base - reelIndex * 4), 28, 220);
+  }
+
+  function stopSlotReelTimers() {
+    ensureSlotRuntimeState();
+    runtime.slot.reels.forEach(reel => {
+      if (reel?.timerId) {
+        window.clearInterval(reel.timerId);
+        reel.timerId = 0;
+      }
+    });
+  }
+
+  function playSlotCue({ preview = true, force = false } = {}) {
+    const safe = sanitizeSoundSettings(appStore.future.sound);
+    if (!safe.enabled) return;
+    if (safe.volume <= 0) return;
+    const volume = preview ? clampSoundVolume(Math.round(safe.volume * 0.78)) : safe.volume;
+    playSoundPattern({ ...safe, enabled: true, volume }, {
+      ignoreEnabled: true,
+      preview,
+    });
+  }
+
+  function emitSlotParticles(kind = "tap", target = timerFrame) {
+    const palette = kind === "big"
+      ? phasePalette("focus")
+      : kind === "reach"
+        ? phasePalette("warmup")
+        : phasePalette("rest");
+    const config = kind === "big"
+      ? { count: 144, stage: "rush", xSpread: 188, ySpread: 120, sweep: 264, durationMin: 0.96, durationMax: 1.44, opacityBase: 0.74 }
+      : kind === "reach"
+        ? { count: 92, stage: "turn", xSpread: 142, ySpread: 86, sweep: 212, durationMin: 0.84, durationMax: 1.22, opacityBase: 0.66 }
+        : kind === "miss"
+          ? { count: 66, stage: "calm", xSpread: 108, ySpread: 62, sweep: 156, durationMin: 0.9, durationMax: 1.26, opacityBase: 0.52 }
+          : { count: 40, stage: "calm", xSpread: 88, ySpread: 44, sweep: 120, durationMin: 0.86, durationMax: 1.18, opacityBase: 0.5 };
+    createParticleBurst(target || timerFrame, {
+      ...config,
+      palette,
+    });
+  }
+
+  function renderSlotReelValues() {
+    ensureSlotRuntimeState();
+    const reels = runtime.slot.reels.length === 3
+      ? runtime.slot.reels
+      : runtime.slot.values.map((value, index) => ({
+          index,
+          value,
+          spinning: false,
+          state: "idle",
+          timerId: 0,
+        }));
+    const nodes = slotReelNodes();
+    nodes.forEach((node, index) => {
+      const reel = reels[index] || {
+        value: runtime.slot.values[index] || 0,
+        spinning: false,
+        state: "idle",
+      };
+      if (node.value) node.value.textContent = String(clamp(Math.floor(Number(reel.value) || 0), 0, 9));
+      if (node.root) {
+        node.root.classList.toggle("is-spin", Boolean(reel.spinning));
+        node.root.classList.toggle("is-hit", reel.state === "hit");
+        node.root.classList.toggle("is-perfect", reel.state === "perfect");
+      }
+    });
+  }
+
+  function renderSlotFeedCards() {
+    if (!els.slotFeed) return;
+    ensureSlotRuntimeState();
+    els.slotFeed.replaceChildren();
+    if (!runtime.slot.feed.length) {
+      const empty = document.createElement("div");
+      empty.className = "slot-empty";
+      empty.textContent = "Spin and stop to record results";
+      els.slotFeed.appendChild(empty);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    runtime.slot.feed.forEach(entry => {
+      const row = document.createElement("article");
+      row.className = "lap-row slot-feed-card";
+      row.classList.add(entry.kind === "big" ? "is-big" : entry.kind === "reach" ? "is-reach" : "is-miss");
+
+      const decor = document.createElement("div");
+      decor.className = "lap-decor";
+      decor.textContent = String(entry.values.join(""));
+
+      const index = document.createElement("div");
+      index.className = "lap-index";
+      index.textContent = `Spin ${entry.spin}`;
+
+      const times = document.createElement("div");
+      times.className = "lap-times";
+      const split = document.createElement("div");
+      split.className = "lap-split";
+      split.textContent = entry.values.join("  ");
+      const total = document.createElement("div");
+      total.className = "lap-total";
+      total.textContent = `${entry.label} · ${entry.detail}`;
+      times.append(split, total);
+
+      const flags = document.createElement("div");
+      flags.className = "lap-flags";
+      const primary = document.createElement("div");
+      primary.className = `lap-flag ${entry.kind === "big" ? "is-best" : entry.kind === "reach" ? "is-next" : "is-neutral"}`;
+      primary.textContent = entry.kind === "big" ? "BIG" : entry.kind === "reach" ? "REACH" : "MISS";
+      flags.appendChild(primary);
+      if (entry.just) {
+        const just = document.createElement("div");
+        just.className = "lap-flag is-best";
+        just.textContent = "VITA";
+        flags.appendChild(just);
+      }
+
+      row.append(decor, index, times, flags);
+      fragment.appendChild(row);
+    });
+    els.slotFeed.appendChild(fragment);
+  }
+
+  function renderSlotPanel() {
+    if (!els.slotPanel) return;
+    ensureSlotRuntimeState();
+    const visible = state.type === "slot" && !document.body.classList.contains("is-minimal");
+    els.stage?.classList.toggle("has-slot", visible);
+    els.slotPanel.hidden = !visible;
+    if (!visible) return;
+
+    const speed = slotSpeedOptionById(state.slot?.speed);
+    const assist = slotAssistOptionById(state.slot?.assist);
+    if (els.slotSpeedChip) els.slotSpeedChip.textContent = speed.label;
+    if (els.slotAssistChip) els.slotAssistChip.textContent = `ASSIST ${assist.label}`;
+    if (els.slotStateChip) {
+      const top = runtime.slot.feed[0];
+      els.slotStateChip.textContent = runtime.slot.spinning
+        ? (runtime.slot.reachActive ? "REACH" : "SPINNING")
+        : top?.kind === "big"
+          ? (top.just ? "VITA" : "BIG")
+          : "READY";
+    }
+    if (els.slotStartBtn) {
+      setButtonLabel(els.slotStartBtn, runtime.slot.spinning ? "RESPIN" : "SPIN");
+      setButtonShortcut(els.slotStartBtn, "1");
+      els.slotStartBtn.disabled = false;
+    }
+
+    const labels = ["LEFT", "CENTER", "RIGHT"];
+    [els.slotStopLeftBtn, els.slotStopCenterBtn, els.slotStopRightBtn].forEach((button, index) => {
+      if (!button) return;
+      const spinning = Boolean(runtime.slot.spinning && runtime.slot.reels[index]?.spinning);
+      button.disabled = !spinning;
+      setButtonLabel(button, spinning ? labels[index] : "LOCK");
+      setButtonShortcut(button, String(index + 2));
+    });
+
+    renderSlotReelValues();
+    renderSlotFeedCards();
+  }
+
+  function pushSlotFeedEntry({ values, kind = "miss", just = false } = {}) {
+    ensureSlotRuntimeState();
+    runtime.slot.feed.unshift({
+      spin: runtime.slot.spinId,
+      values: (Array.isArray(values) ? values : [0, 0, 0]).map(value => clamp(Math.floor(Number(value) || 0), 0, 9)),
+      kind,
+      just,
+      label: kind === "big" ? (just ? "Vita big hit" : "Big hit") : kind === "reach" ? "Reach miss" : "Miss",
+      detail: `${slotSpeedOptionById(state.slot?.speed).label} · ${slotAssistOptionById(state.slot?.assist).label}`,
+      timestamp: Date.now(),
+    });
+    runtime.slot.feed = runtime.slot.feed.slice(0, 24);
+  }
+
+  function finalizeSlotSpin({ assistSnap = false } = {}) {
+    ensureSlotRuntimeState();
+    stopSlotReelTimers();
+    runtime.slot.spinning = false;
+    runtime.phase = "idle";
+    runtime.plan = null;
+    const values = runtime.slot.reels.map(reel => clamp(Math.floor(Number(reel?.value) || 0), 0, 9));
+    runtime.slot.values = [...values];
+    const unique = new Set(values).size;
+    const isBig = unique === 1;
+    const wasReach = runtime.slot.reachActive;
+    const stopTimes = runtime.slot.stopTimes.filter(value => Number.isFinite(value));
+    const spread = stopTimes.length >= 2 ? Math.max(...stopTimes) - Math.min(...stopTimes) : Number.POSITIVE_INFINITY;
+    const justWindowMs = slotAssistOptionById(state.slot?.assist).justWindowMs;
+    const isJust = isBig && spread <= justWindowMs;
+    runtime.slot.reachActive = false;
+    runtime.slot.reels.forEach(reel => {
+      reel.spinning = false;
+      reel.state = isBig ? (isJust ? "perfect" : "hit") : "idle";
+    });
+
+    if (isBig) {
+      setStatus(isJust ? "VITA" : "BIG");
+      setDurationPill(totalSummaryForType(), isJust ? "Vita push" : "Big bonus");
+      emitSlotParticles("big", timerFrame);
+      playCompletionSound();
+      pushSlotFeedEntry({ values, kind: "big", just: isJust });
+      logHistory("slot_big", {
+        type: "slot",
+        summary: isJust ? "SLOT VITA" : "SLOT BIG",
+        note: `${values.join("")} · ${slotSummary(state.slot)}${assistSnap ? " · ASSIST SNAP" : ""}`,
+      });
+    } else if (wasReach) {
+      setStatus("MISS");
+      setDurationPill(totalSummaryForType(), "Reach miss");
+      emitSlotParticles("reach", timerFrame);
+      playSlotCue({ preview: true });
+      pushSlotFeedEntry({ values, kind: "reach", just: false });
+      logHistory("slot_reach", {
+        type: "slot",
+        summary: "SLOT REACH MISS",
+        note: `${values.join("")} · ${slotSummary(state.slot)}${assistSnap ? " · ASSIST SNAP" : ""}`,
+      });
+    } else {
+      setStatus("READY");
+      setDurationPill(totalSummaryForType(), "Try again");
+      emitSlotParticles("miss", timerFrame);
+      pushSlotFeedEntry({ values, kind: "miss", just: false });
+    }
+    setPreview(typeLabel(state.type));
+    setClockMeridiem("");
+    renderDigits(slotDisplayValue(values));
+    renderSlotPanel();
+  }
+
+  function startSlotSpin() {
+    if (state.type !== "slot") return;
+    ensureSlotRuntimeState();
+    state.slot = normalizeTypeConfig("slot", state.slot);
+    stopSlotReelTimers();
+    runtime.slot.spinId += 1;
+    runtime.slot.stopTimes = [];
+    runtime.slot.reachActive = false;
+    runtime.slot.spinStartedAt = performance.now();
+    runtime.slot.spinning = true;
+    runtime.slot.reels = Array.from({ length: 3 }, (_, index) => ({
+      index,
+      value: clamp(Math.floor(Number(runtime.slot.values[index] ?? Math.floor(Math.random() * 10))), 0, 9),
+      spinning: true,
+      state: "idle",
+      timerId: 0,
+      ticks: 0,
+    }));
+    runtime.slot.values = runtime.slot.reels.map(reel => reel.value);
+    const digits = Math.max(2, Math.floor(Number(state.slot?.reelDigits) || 10));
+    runtime.slot.reels.forEach((reel, index) => {
+      reel.timerId = window.setInterval(() => {
+        if (state.type !== "slot") {
+          reel.spinning = false;
+          if (reel.timerId) {
+            window.clearInterval(reel.timerId);
+            reel.timerId = 0;
+          }
+          return;
+        }
+        if (!reel.spinning) return;
+        const step = Math.random() < 0.22 ? 2 : 1;
+        reel.value = (reel.value + step) % digits;
+        runtime.slot.values[index] = reel.value;
+        renderSlotReelValues();
+        renderDigits(slotDisplayValue(runtime.slot.values));
+      }, slotStepMsForReel(state.slot?.speed, index));
+    });
+    runtime.phase = "running";
+    runtime.plan = {
+      kind: "slot",
+      config: normalizeTypeConfig("slot", state.slot),
+      spinId: runtime.slot.spinId,
+    };
+    document.body.classList.remove("is-ended");
+    clearTrailParticles();
+    setClockMeridiem("");
+    setStatus("SPIN");
+    setPreview(typeLabel(state.type));
+    setDurationPill(totalSummaryForType(), "Stop reels with 2 / 3 / 4");
+    playSlotCue({ preview: true });
+    renderSlotPanel();
+    renderDigits(slotDisplayValue(runtime.slot.values));
+  }
+
+  function stopSlotReelByIndex(index) {
+    if (state.type !== "slot") return;
+    ensureSlotRuntimeState();
+    if (!runtime.slot.spinning) return;
+    const safeIndex = clamp(Math.floor(Number(index) || 0), 0, 2);
+    const reel = runtime.slot.reels[safeIndex];
+    if (!reel || !reel.spinning) return;
+    reel.spinning = false;
+    reel.state = "hit";
+    if (reel.timerId) {
+      window.clearInterval(reel.timerId);
+      reel.timerId = 0;
+    }
+    runtime.slot.stopTimes[safeIndex] = performance.now();
+    runtime.slot.values[safeIndex] = clamp(Math.floor(Number(reel.value) || 0), 0, 9);
+    emitSlotParticles("tap", slotReelNodes()[safeIndex]?.root || timerFrame);
+    playSlotCue({ preview: true });
+
+    const remaining = runtime.slot.reels.filter(item => item.spinning).length;
+    const locked = runtime.slot.reels.filter(item => !item.spinning);
+    if (remaining === 1 && locked.length === 2 && locked[0].value === locked[1].value) {
+      runtime.slot.reachActive = true;
+      setStatus("REACH");
+      setDurationPill(totalSummaryForType(), "Chance");
+      emitSlotParticles("reach", timerFrame);
+      playSlotCue({ preview: false, force: true });
+    }
+
+    if (remaining === 0) {
+      const values = runtime.slot.reels.map(item => clamp(Math.floor(Number(item.value) || 0), 0, 9));
+      let assistSnap = false;
+      if (new Set(values).size !== 1) {
+        const counts = values.reduce((map, value) => {
+          map.set(value, (map.get(value) || 0) + 1);
+          return map;
+        }, new Map());
+        let pairDigit = null;
+        counts.forEach((count, value) => {
+          if (count >= 2) pairDigit = value;
+        });
+        if (pairDigit != null) {
+          const oddIndex = values.findIndex(value => value !== pairDigit);
+          if (oddIndex === safeIndex) {
+            const assist = slotAssistOptionById(state.slot?.assist);
+            const distance = slotCircularDistance(values[oddIndex], pairDigit, state.slot?.reelDigits || 10);
+            if (distance <= assist.snapWindow) {
+              runtime.slot.reels[oddIndex].value = pairDigit;
+              runtime.slot.values[oddIndex] = pairDigit;
+              assistSnap = true;
+            }
+          }
+        }
+      }
+      finalizeSlotSpin({ assistSnap });
+      return;
+    }
+
+    renderSlotPanel();
+    renderDigits(slotDisplayValue(runtime.slot.values));
+  }
+
   function buildPlan() {
     switch (state.type) {
       case "countdown":
@@ -8235,6 +8926,11 @@
         return {
           kind: "stopwatch",
           startSeconds: Math.max(0, state.stopwatchStartSeconds),
+        };
+      case "slot":
+        return {
+          kind: "slot",
+          config: normalizeTypeConfig("slot", state.slot),
         };
       case "pomodoro": {
         const cycles = Math.max(1, state.pomodoro.cycles);
@@ -9652,6 +10348,15 @@
       renderClockWorld();
       return;
     }
+    if (state.type === "slot") {
+      stopClockTicker();
+      stopAlarmTicker();
+      stopAlarmAlertLoop();
+      stopAlarmDisplayTicker();
+      hideAlarmOverlay();
+      startSlotSpin();
+      return;
+    }
     if (state.type === "alarm") {
       const plan = buildPlan();
       stopClockTicker();
@@ -9816,6 +10521,8 @@
   }
 
   function resetToIdleState({ log = false } = {}) {
+    ensureSlotRuntimeState();
+    stopSlotReelTimers();
     runtime.phase = "idle";
     runtime.phaseIndex = 0;
     runtime.phaseRemainingMs = 0;
@@ -9829,6 +10536,16 @@
     runtime.stopwatchLaps = [];
     runtime.stopwatchLapStartMs = 0;
     runtime.alarmConsumedIds = [];
+    runtime.slot.spinning = false;
+    runtime.slot.reachActive = false;
+    runtime.slot.stopTimes = [];
+    runtime.slot.reels = runtime.slot.values.map((value, index) => ({
+      index,
+      value,
+      spinning: false,
+      state: "idle",
+      timerId: 0,
+    }));
     runtime.plan = null;
     stopLoop();
     stopClockTicker();
@@ -9853,6 +10570,7 @@
     renderClockWorld();
     renderAlarmBoard();
     renderStopwatchPanel();
+    renderSlotPanel();
     persistStore();
     if (log) {
       logHistory("reset", {

@@ -58,6 +58,7 @@ body.is-minimal .clock-controls{opacity:0;transform:translate(-50%,10px);pointer
 body.is-minimal .clock-world{opacity:0;transform:translate(-50%,10px);pointer-events:none}
 body.is-minimal .alarm-board{opacity:0;transform:translateY(10px);pointer-events:none}
 body.is-minimal .stopwatch-panel{opacity:0;transform:translateY(10px);pointer-events:none}
+body.is-minimal .slot-panel{opacity:0;transform:translateY(10px);pointer-events:none}
 body.is-minimal .sequence-panel{opacity:0;transform:translateY(10px);pointer-events:none}
 body.is-minimal.show-minimal-detail .sequence-panel{opacity:1;transform:translateX(-50%);pointer-events:auto}
 body.is-minimal .side-rail{opacity:0;pointer-events:none}
@@ -87,12 +88,13 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .pill-button:hover{transform:translateY(-1px);background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.36);box-shadow:0 12px 30px rgba(88,66,124,.12)}
 .pill-button:focus-visible{outline:none;border-color:rgba(255,255,255,.54);box-shadow:0 0 0 4px rgba(255,255,255,.12),0 12px 30px rgba(88,66,124,.12)}
 #soundPill{min-width:130px;font-size:12px;font-weight:700;letter-spacing:.08em;line-height:1;text-transform:none;white-space:nowrap}
-.stage{position:relative;min-height:0;height:100%;--stopwatch-panel-height:392px;--stopwatch-reserve:0px;--detail-panel-height:0px;--detail-panel-bottom:0px;--detail-collapsed-height:0px;--detail-collapsed-bottom:0px;--alarm-board-height:0px;--alarm-board-bottom:0px;--detail-overlap:0px;--detail-reserve:0px;--detail-action-bottom:clamp(28px,6vh,52px);--detail-action-height:56px;--detail-action-gap:24px}
+.stage{position:relative;min-height:0;height:100%;--stopwatch-panel-height:392px;--stopwatch-reserve:0px;--slot-panel-height:344px;--slot-reserve:0px;--detail-panel-height:0px;--detail-panel-bottom:0px;--detail-collapsed-height:0px;--detail-collapsed-bottom:0px;--alarm-board-height:0px;--alarm-board-bottom:0px;--detail-overlap:0px;--detail-reserve:0px;--detail-action-bottom:clamp(28px,6vh,52px);--detail-action-height:56px;--detail-action-gap:24px}
   .stage.has-stopwatch{--stopwatch-reserve:calc(var(--stopwatch-panel-height) + 20px)}
+  .stage.has-slot{--slot-reserve:calc(var(--slot-panel-height) + 20px)}
   .stage.has-detail{--detail-panel-height:290px;--detail-panel-bottom:68px;--detail-action-height:56px;--detail-action-gap:46px;--detail-overlap:84px;--detail-action-bottom:calc(var(--detail-panel-bottom) + var(--detail-panel-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom) - var(--detail-overlap))}
   .stage.has-detail-collapsed{--detail-collapsed-height:46px;--detail-collapsed-bottom:28px;--detail-action-height:56px;--detail-action-gap:36px;--detail-overlap:48px;--detail-action-bottom:calc(var(--detail-collapsed-bottom) + var(--detail-collapsed-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom) - var(--detail-overlap))}
 .stage.has-alarm{--alarm-board-height:248px;--alarm-board-bottom:28px;--detail-action-height:56px;--detail-action-gap:18px;--detail-overlap:0px;--detail-action-bottom:calc(var(--alarm-board-bottom) + var(--alarm-board-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom))}
-.stage-timer{position:absolute;inset:0 0 calc(var(--stopwatch-reserve) + var(--detail-reserve)) 0;display:grid;place-items:center;width:100%;min-height:0;padding:18px 0}
+.stage-timer{position:absolute;inset:0 0 calc(var(--stopwatch-reserve) + var(--slot-reserve) + var(--detail-reserve)) 0;display:grid;place-items:center;width:100%;min-height:0;padding:18px 0}
 .timer-frame{position:relative;isolation:isolate;display:grid;place-items:center;gap:12px;inline-size:min(100%,clamp(320px,86vw,1120px));inline-size:min(100%,clamp(320px,86svw,1120px));box-sizing:border-box;padding:24px 12px 22px;border-radius:34px;border:0;background:transparent;box-shadow:none;contain:layout size}
 .ambient{position:absolute;border-radius:50%;pointer-events:none;filter:blur(30px);opacity:.7}.ambient.a{width:280px;height:280px;background:radial-gradient(circle,rgba(255,255,255,.24),transparent 64%);left:-70px;top:-70px}.ambient.b{width:340px;height:340px;background:radial-gradient(circle,rgba(255,124,194,.28),transparent 66%);right:-130px;bottom:-120px}.ambient.c{width:220px;height:220px;background:radial-gradient(circle,rgba(255,211,106,.24),transparent 66%);right:18%;top:-80px}
   .phase-splash{position:absolute;left:clamp(-108px,-7vw,-48px);top:clamp(-66px,-6vh,-20px);z-index:0;pointer-events:none;font-family:'Caveat','Comic Sans MS',cursive;font-size:clamp(120px,16vw,240px);line-height:.82;font-weight:700;letter-spacing:.01em;transform:rotate(-13deg) scale(var(--phase-splash-scale));transform-origin:left center;opacity:.94;text-shadow:0 10px 28px rgba(255,255,255,.18);filter:drop-shadow(0 6px 18px rgba(255,255,255,.1));white-space:nowrap}
@@ -129,13 +131,20 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .alarm-display-toggle .scenario-mode-text{font-size:9px;font-weight:800;letter-spacing:.16em;color:rgba(255,255,255,.74);text-shadow:0 2px 12px rgba(255,255,255,.16);white-space:nowrap;text-align:left}
 .alarm-display-toggle .scenario-mode-toggle{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.14));color:rgba(255,255,255,.92);border-color:rgba(255,255,255,.28);box-shadow:0 10px 28px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.3)}
 .stopwatch-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--stopwatch-panel-height);display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:12px;justify-items:stretch;align-self:end}
+.slot-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--slot-panel-height);display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:10px;justify-items:stretch;align-self:end}
 .stopwatch-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}
+.slot-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}
 .stopwatch-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:min(100%,740px);justify-self:center;gap:10px}
+.slot-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:min(100%,740px);justify-self:center;gap:10px}
 .stopwatch-button{position:relative;min-width:0;min-height:46px;border:1px solid rgba(255,255,255,.28);border-radius:18px;background:rgba(255,255,255,.24);color:#1a2230;font:inherit;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(14px) saturate(120%);box-shadow:0 14px 34px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.48)}
+.slot-button{position:relative;min-width:0;min-height:46px;border:1px solid rgba(255,255,255,.28);border-radius:18px;background:rgba(255,255,255,.24);color:#1a2230;font:inherit;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;backdrop-filter:blur(14px) saturate(120%);box-shadow:0 14px 34px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.48)}
 .stopwatch-button.is-primary{background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,248,238,.9));color:#17202e}
+.slot-button.is-primary{background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,248,238,.9));color:#17202e}
 .stopwatch-button.is-stop{background:linear-gradient(135deg,rgba(255,233,236,.98),rgba(255,206,218,.9));color:#7a1f39}
 .stopwatch-button:disabled{opacity:.45;cursor:default;box-shadow:none}
+.slot-button:disabled{opacity:.45;cursor:default;box-shadow:none}
 .stopwatch-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;justify-self:center;gap:8px}
+.slot-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;justify-self:center;gap:8px}
 .stopwatch-chip{position:relative;isolation:isolate;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;min-height:54px;width:100%;padding:10px 14px;border-radius:18px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:rgba(255,255,255,.86);font:inherit;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;line-height:1.25;text-align:center}
 .stopwatch-chip>*{position:relative;z-index:1}
 .stopwatch-chip::after{content:attr(data-lap);position:absolute;right:6px;bottom:-14px;font-size:72px;font-weight:800;line-height:.9;color:rgba(255,255,255,.14);letter-spacing:-.06em;transform:rotate(18deg);pointer-events:none;z-index:0}
@@ -150,6 +159,28 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .stopwatch-laps{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.34) transparent}
 .stopwatch-laps::-webkit-scrollbar-thumb{background:rgba(255,255,255,.34);border-radius:999px}
 .stopwatch-empty{grid-column:1/-1;min-height:72px;display:grid;place-items:center;border-radius:20px;border:1px dashed rgba(255,255,255,.24);background:rgba(255,255,255,.14);color:rgba(255,255,255,.84);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.slot-bottom{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px}
+.slot-reels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.slot-reel{position:relative;isolation:isolate;overflow:hidden;display:grid;place-items:center;gap:4px;min-height:98px;padding:8px 8px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.16));box-shadow:inset 0 1px 0 rgba(255,255,255,.36);backdrop-filter:blur(14px) saturate(120%)}
+.slot-reel::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 36%,rgba(255,255,255,.18),transparent 66%);opacity:.65;pointer-events:none}
+.slot-reel.is-spin .slot-reel-value{animation:slotRoll .18s linear infinite}
+.slot-reel.is-hit{box-shadow:0 0 0 1px rgba(255,255,255,.2),0 12px 30px rgba(255,210,142,.18),inset 0 1px 0 rgba(255,255,255,.42)}
+.slot-reel.is-perfect{box-shadow:0 0 0 1px rgba(176,255,221,.34),0 16px 34px rgba(160,255,223,.24),inset 0 1px 0 rgba(255,255,255,.48)}
+.slot-reel-index{position:relative;z-index:1;color:rgba(255,255,255,.68);font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+.slot-reel-value{position:relative;z-index:1;font-size:64px;font-weight:900;line-height:.9;letter-spacing:-.02em;color:#fff;text-shadow:0 0 18px rgba(255,255,255,.32)}
+.slot-reel-hint{position:relative;z-index:1;color:rgba(255,255,255,.7);font-size:9px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+.slot-feed{min-height:0;overflow:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-right:2px;align-content:start}
+.slot-feed::-webkit-scrollbar{width:8px}
+.slot-feed{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.34) transparent}
+.slot-feed::-webkit-scrollbar-thumb{background:rgba(255,255,255,.34);border-radius:999px}
+.slot-empty{grid-column:1/-1;min-height:64px;display:grid;place-items:center;border-radius:20px;border:1px dashed rgba(255,255,255,.24);background:rgba(255,255,255,.14);color:rgba(255,255,255,.84);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.slot-feed-card .lap-decor{font-size:132px;right:-8px;bottom:-34px}
+.slot-feed-card .lap-split{font-size:14px}
+.slot-feed-card .lap-total{letter-spacing:.04em;text-transform:none}
+.slot-feed-card.is-big{background:linear-gradient(180deg,rgba(255,255,255,.4),rgba(255,239,212,.26));border-color:rgba(255,255,255,.42)}
+.slot-feed-card.is-reach{background:linear-gradient(180deg,rgba(255,255,255,.32),rgba(224,247,255,.22));border-color:rgba(255,255,255,.32)}
+.slot-feed-card.is-miss{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.14))}
+@keyframes slotRoll{0%{transform:translateY(-3px)}50%{transform:translateY(3px)}100%{transform:translateY(-3px)}}
 .lap-row{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:8px;min-height:116px;padding:14px 14px 13px;border-radius:20px;border:1px solid rgba(255,255,255,.24);background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,.18));box-shadow:inset 0 1px 0 rgba(255,255,255,.36);backdrop-filter:blur(16px) saturate(120%)}
 .lap-row>*{position:relative;z-index:1}
 .lap-decor{position:absolute;right:-8px;bottom:-28px;font-size:156px;font-weight:800;line-height:.9;color:rgba(255,255,255,.2);letter-spacing:-.06em;pointer-events:none;z-index:0;transform:rotate(18deg)}
@@ -221,15 +252,16 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .sequence-gap-line::before{content:"";position:absolute;inset:1px;border-radius:inherit;background:linear-gradient(90deg,transparent,rgba(255,255,255,.62),transparent);opacity:.76}
   .stage-start{position:absolute;left:50%;bottom:var(--detail-action-bottom);transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:min(100%,780px);z-index:3}
 .stage.has-stopwatch .stage-start{display:none}
+.stage.has-slot .stage-start{display:none}
 .stage.has-clock .stage-start{display:none}
 .stage.has-alarm .stage-start{width:min(100%,720px)}
 .stage-start #stageSkipBtn{display:none}
 .stage.has-detail .stage-start,.stage.has-detail-collapsed .stage-start{grid-template-columns:repeat(4,minmax(0,1fr));width:min(100%,1040px)}
 .stage.has-detail .stage-start #stageSkipBtn,.stage.has-detail-collapsed .stage-start #stageSkipBtn{display:inline-flex}
-.stage-start .action-button,.stopwatch-start .action-button{position:relative;width:100%;min-width:0;min-height:56px;border-radius:18px;padding:0 28px;letter-spacing:.14em;font-size:15px}
+.stage-start .action-button,.stopwatch-start .action-button,.slot-start .action-button{position:relative;width:100%;min-width:0;min-height:56px;border-radius:18px;padding:0 28px;letter-spacing:.14em;font-size:15px}
 .stage-start .action-button.primary{box-shadow:0 18px 46px rgba(255,255,255,.18),0 10px 28px rgba(88,66,124,.12)}
 .stage-start .action-button.secondary{color:rgba(24,31,43,.88);background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.24);box-shadow:0 14px 34px rgba(88,66,124,.1),inset 0 1px 0 rgba(255,255,255,.44)}
-.stopwatch-start .action-button.primary{box-shadow:0 18px 46px rgba(255,255,255,.18),0 10px 28px rgba(88,66,124,.12)}
+.stopwatch-start .action-button.primary,.slot-start .action-button.primary{box-shadow:0 18px 46px rgba(255,255,255,.18),0 10px 28px rgba(88,66,124,.12)}
 .stopwatch-start .action-button.primary.is-stop{
   color:#6f1f34;
   background:linear-gradient(135deg,rgba(255,238,242,.98),rgba(255,214,224,.92));
@@ -237,7 +269,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 }
 .button-label{display:inline-flex;align-items:center;justify-content:center}
 .button-shortcut{position:absolute;right:10px;bottom:8px;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:7px;border:1px solid rgba(255,255,255,.58);background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,241,231,.86));box-shadow:0 1px 0 rgba(255,255,255,.95) inset,0 -1px 0 rgba(255,255,255,.18) inset,0 4px 10px rgba(88,66,124,.12);color:rgba(20,27,37,.66);font-size:10px;font-weight:900;letter-spacing:-.01em;text-transform:none;line-height:1}
-.stopwatch-button .button-shortcut{right:8px;bottom:6px}
+.stopwatch-button .button-shortcut,.slot-button .button-shortcut{right:8px;bottom:6px}
 .clock-controls{position:absolute;left:50%;bottom:var(--detail-action-bottom);transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;width:min(100%,860px);z-index:3;transition:opacity .24s ease,transform .24s ease}
 .clock-control{display:grid;gap:7px;min-width:0}
 .clock-control-label{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(19,24,35,.56);padding-left:2px}
@@ -560,11 +592,15 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .sequence-rail.is-rounds{grid-auto-columns:minmax(64px,1fr);gap:6px}
   .sequence-rail.is-rounds.is-windowed{grid-auto-columns:minmax(64px,1fr);gap:6px}
   .stage.has-detail .stage-start,.stage.has-detail-collapsed .stage-start{width:min(100%,960px)}
-  .stage-start .action-button,.stage-start .sequence-skip,.stopwatch-start .action-button{width:min(100%,240px);min-height:52px}
+  .stage-start .action-button,.stage-start .sequence-skip,.stopwatch-start .action-button,.slot-start .action-button{width:min(100%,240px);min-height:52px}
   .stopwatch-panel{width:100%;gap:10px}
+  .slot-panel{width:100%;gap:10px}
   .stopwatch-start{width:min(100%,240px)}
+  .slot-start{width:min(100%,240px)}
   .stopwatch-actions{width:min(100%,740px);grid-template-columns:repeat(2,minmax(0,1fr))}
+  .slot-actions{width:min(100%,740px);grid-template-columns:repeat(3,minmax(0,1fr))}
   .stopwatch-stats{width:100%}
+  .slot-stats{width:100%}
   .stopwatch-laps{grid-template-columns:repeat(2,minmax(0,1fr))}
   .lap-row{min-height:108px}
   .settings-sheet{width:min(980px,calc(100vw - 14px))}
@@ -584,7 +620,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .stage.has-detail{--detail-panel-height:304px;--detail-panel-bottom:32px;--detail-action-height:52px;--detail-action-gap:38px;--detail-overlap:56px;--detail-action-bottom:calc(var(--detail-panel-bottom) + var(--detail-panel-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom) - var(--detail-overlap))}
   .stage.has-detail-collapsed{--detail-collapsed-height:42px;--detail-collapsed-bottom:8px;--detail-action-height:52px;--detail-action-gap:32px;--detail-overlap:32px;--detail-action-bottom:calc(var(--detail-collapsed-bottom) + var(--detail-collapsed-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom) - var(--detail-overlap))}
   .stage.has-alarm{--alarm-board-height:214px;--alarm-board-bottom:14px;--detail-action-height:52px;--detail-action-gap:14px;--detail-overlap:0px;--detail-action-bottom:calc(var(--alarm-board-bottom) + var(--alarm-board-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom))}
-  .stopwatch-actions,.stopwatch-stats{grid-template-columns:1fr}
+  .stopwatch-actions,.stopwatch-stats,.slot-actions,.slot-stats{grid-template-columns:1fr}
   .stopwatch-laps{grid-template-columns:1fr}
   .stage-start{grid-template-columns:1fr;width:min(100%,240px)}
   .clock-controls{grid-template-columns:1fr;width:min(100%,320px);top:calc(50% + clamp(88px,18vh,144px))}
@@ -601,7 +637,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .clock-meridiem.is-before-badge,.clock-meridiem.is-after-badge,.clock-meridiem.is-before-badge-horizontal,.clock-meridiem.is-after-badge-horizontal,.clock-meridiem.is-top-left-badge,.clock-meridiem.is-top-right-badge{left:calc(50% - min(36vw,170px));min-height:42px;padding:6px 7px}
   .clock-meridiem.is-slanted{left:calc(50% - min(27vw,126px));top:calc(50% - clamp(42px,6vh,62px));font-size:clamp(24px,8vw,36px)}
   .stage.has-detail .stage-start,.stage.has-detail-collapsed .stage-start{grid-template-columns:1fr;width:min(100%,240px)}
-  .stopwatch-start{width:100%}
+  .stopwatch-start,.slot-start{width:100%}
   .sequence-panel{gap:12px}
   .sequence-head,.sequence-stats{grid-template-columns:1fr}
   .sequence-skip{width:100%}
@@ -767,6 +803,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .sequence-panel,
   .alarm-board,
   .stopwatch-panel,
+  .slot-panel,
   .sequence-restore-hit{
     position:relative;
     left:auto;
@@ -780,7 +817,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   }
   .stage-start{order:8;margin-top:14px;margin-bottom:4px;z-index:0;flex:0 0 auto}
   .clock-controls{order:2;margin-top:6px}
-  .sequence-panel,.alarm-board,.stopwatch-panel,.clock-world,.sequence-restore-hit{order:3;margin-top:4px;z-index:0;flex:0 0 auto}
+  .sequence-panel,.alarm-board,.stopwatch-panel,.slot-panel,.clock-world,.sequence-restore-hit{order:3;margin-top:4px;z-index:0;flex:0 0 auto}
   .stage.has-alarm .alarm-board{margin-bottom:12px}
   .stage.has-alarm .stage-start{margin-top:14px}
   .stage-start{
@@ -795,7 +832,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   }
   .stage-start .action-button,
   .stage-start .sequence-skip,
-  .stopwatch-start .action-button{
+  .stopwatch-start .action-button,
+  .slot-start .action-button{
     width:100%;
     min-height:52px;
     padding:0 12px;
@@ -848,9 +886,22 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     gap:8px;
     margin-top:8px;
   }
+  .slot-panel{
+    height:auto;
+    min-height:0;
+    gap:8px;
+    margin-top:8px;
+  }
   .stopwatch-start,.stopwatch-actions,.stopwatch-stats{width:100%}
   .stopwatch-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stopwatch-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .slot-start,.slot-actions,.slot-stats{width:100%}
+  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .slot-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .slot-reels{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .slot-reel{min-height:86px;padding:7px 6px 8px}
+  .slot-reel-value{font-size:50px}
+  .slot-feed{grid-template-columns:1fr;max-height:min(34vh,220px)}
   .stopwatch-laps{
     grid-template-columns:1fr;
     max-height:min(34vh,240px);
@@ -1133,6 +1184,43 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
         <button class="stopwatch-chip is-sort" id="stopwatchWorstChip" type="button">WORST --</button>
       </div>
       <div class="stopwatch-laps" id="stopwatchLaps"></div>
+    </section>
+    <section class="slot-panel" id="slotPanel" hidden aria-label="slot tools">
+      <div class="slot-start">
+        <button class="action-button primary" id="slotStartBtn" type="button"><span class="button-label">SPIN</span><span class="button-shortcut" aria-hidden="true">1</span></button>
+      </div>
+      <div class="slot-actions">
+        <button class="slot-button" id="slotStopLeftBtn" type="button"><span class="button-label">LEFT</span><span class="button-shortcut" aria-hidden="true">2</span></button>
+        <button class="slot-button" id="slotStopCenterBtn" type="button"><span class="button-label">CENTER</span><span class="button-shortcut" aria-hidden="true">3</span></button>
+        <button class="slot-button" id="slotStopRightBtn" type="button"><span class="button-label">RIGHT</span><span class="button-shortcut" aria-hidden="true">4</span></button>
+      </div>
+      <div class="slot-stats">
+        <div class="stopwatch-chip" id="slotSpeedChip">SPEED 5</div>
+        <div class="stopwatch-chip" id="slotStateChip">READY</div>
+        <div class="stopwatch-chip" id="slotAssistChip">ASSIST NORMAL</div>
+      </div>
+      <div class="slot-bottom">
+        <div class="slot-reels">
+          <article class="slot-reel" id="slotReelLeft">
+            <span class="slot-reel-index">REEL 1</span>
+            <strong class="slot-reel-value" id="slotReelValueLeft">7</strong>
+            <span class="slot-reel-hint">STOP 2</span>
+          </article>
+          <article class="slot-reel" id="slotReelCenter">
+            <span class="slot-reel-index">REEL 2</span>
+            <strong class="slot-reel-value" id="slotReelValueCenter">7</strong>
+            <span class="slot-reel-hint">STOP 3</span>
+          </article>
+          <article class="slot-reel" id="slotReelRight">
+            <span class="slot-reel-index">REEL 3</span>
+            <strong class="slot-reel-value" id="slotReelValueRight">7</strong>
+            <span class="slot-reel-hint">STOP 4</span>
+          </article>
+        </div>
+        <div class="slot-feed" id="slotFeed">
+          <div class="slot-empty">Spin and stop to record results</div>
+        </div>
+      </div>
     </section>
   </main>
   <section class="chrome settings" aria-label="timer settings">
