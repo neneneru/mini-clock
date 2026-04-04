@@ -3975,33 +3975,11 @@
     if (!els.alarmDisplayToggle || els.alarmDisplayToggle.hidden || !timerFrame || !els.timerText) return;
     const frameRect = timerFrame.getBoundingClientRect();
     const textRect = els.timerText.getBoundingClientRect();
-    const leadingRect = clockMeridiemLeadingCharRect() || textRect;
     if (frameRect.width < 2 || textRect.width < 2 || textRect.height < 2) return;
     const isMobile = isMobileUiMode();
     const framePadding = isMobile ? 4 : 8;
     const width = Math.max(44, els.alarmDisplayToggle.offsetWidth || 60);
     const height = Math.max(42, els.alarmDisplayToggle.offsetHeight || 50);
-    const gapX = Math.max(10, textRect.height * 0.1);
-    const gapY = Math.max(8, textRect.height * 0.12);
-    const baseLift = Math.max(isMobile ? 10 : 8, textRect.height * (isMobile ? 0.08 : 0.06));
-    let left = textRect.right - frameRect.left + gapX + width * 0.5;
-    let top = textRect.top - frameRect.top - gapY - height * 0.5;
-
-    if (isMobile) {
-      const mobileGapX = Math.max(10, textRect.height * 0.11);
-      const mobileTopLift = Math.max(10, leadingRect.height * 0.14);
-      left = textRect.right - frameRect.left + mobileGapX + width * 0.5;
-      top = leadingRect.top - frameRect.top - mobileTopLift - height * 0.5;
-    }
-    top -= baseLift;
-
-    const minLeft = width * 0.5 + framePadding;
-    const maxLeft = frameRect.width - width * 0.5 - framePadding;
-    const minTop = height * 0.5 + framePadding;
-    const maxTop = frameRect.height - height * 0.5 - framePadding;
-    left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
-    top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
-
     const localTextRect = {
       left: textRect.left - frameRect.left,
       top: textRect.top - frameRect.top,
@@ -4010,6 +3988,20 @@
       width: textRect.width,
       height: textRect.height,
     };
+    const belowGap = Math.max(
+      isMobile ? 16 : 18,
+      localTextRect.height * (isMobile ? 0.22 : 0.18),
+    );
+    let left = localTextRect.left + localTextRect.width * 0.5;
+    let top = localTextRect.bottom + belowGap + height * 0.5;
+
+    const minLeft = width * 0.5 + framePadding;
+    const maxLeft = frameRect.width - width * 0.5 - framePadding;
+    const minTop = -height * 0.65;
+    const maxTop = frameRect.height + height * 1.35;
+    left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
+    top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
+
     const localToggleRect = () => ({
       left: left - width * 0.5,
       top: top - height * 0.5,
@@ -4019,18 +4011,20 @@
       height,
     });
 
-    const overlapPadding = isMobile ? 5 : 4;
+    const overlapPadding = isMobile ? 8 : 6;
     if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
-      const aboveGap = Math.max(gapY + baseLift * 0.7, localTextRect.height * (isMobile ? 0.33 : 0.26));
-      const preferredTop = localTextRect.top - aboveGap - height * 0.5;
-      const relaxedMinTop = Math.min(minTop, -height * 0.45);
-      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, relaxedMinTop, maxTop);
+      const overlapDepth = localTextRect.bottom - (top - height * 0.5) + overlapPadding;
+      const pushDown = Math.max(isMobile ? 14 : 12, overlapDepth + (isMobile ? 8 : 6));
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top + pushDown, minTop, maxTop);
     }
 
     if (rectsIntersect(localToggleRect(), localTextRect, overlapPadding)) {
-      const emergencyTop = localTextRect.top - height * (isMobile ? 1.24 : 1.14);
-      const relaxedMinTop = -height * 0.58;
-      top = clamp(emergencyTop, relaxedMinTop, maxTop);
+      const emergencyGap = Math.max(
+        isMobile ? 22 : 24,
+        localTextRect.height * (isMobile ? 0.3 : 0.26),
+      );
+      const preferredTop = localTextRect.bottom + emergencyGap + height * 0.5;
+      top = minTop > maxTop ? frameRect.height * 0.5 : clamp(preferredTop, minTop, maxTop);
     }
 
     els.alarmDisplayToggle.style.left = `${left}px`;
