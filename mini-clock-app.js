@@ -3552,6 +3552,26 @@
     const isBadge = styleId.includes("badge");
     const isSlanted = styleId === "slanted";
     const isBeforeInline = styleId === "before-inline";
+    const timerChars = [...els.timerText.querySelectorAll(".timer-char")];
+    const dotIndex = timerChars.findIndex(node => {
+      if (!(node instanceof HTMLElement)) return false;
+      return node.classList.contains("dot") || String(node.textContent || "").includes(".");
+    });
+    let millisecondTailWidth = 0;
+    if (dotIndex >= 0) {
+      let tailLeft = Infinity;
+      let tailRight = -Infinity;
+      timerChars.slice(dotIndex).forEach(node => {
+        const rect = node.getBoundingClientRect();
+        if (!rect || rect.width < 1 || rect.height < 1) return;
+        tailLeft = Math.min(tailLeft, rect.left);
+        tailRight = Math.max(tailRight, rect.right);
+      });
+      if (Number.isFinite(tailLeft) && Number.isFinite(tailRight) && tailRight > tailLeft) {
+        millisecondTailWidth = tailRight - tailLeft;
+      }
+    }
+    const hasMilliseconds = millisecondTailWidth > 0;
     let fontSize = styleId === "slanted" ? slantedSize : (isBadge ? badgeSize : inlineSize);
 
     els.clockMeridiem.style.fontSize = `${fontSize}px`;
@@ -3577,8 +3597,12 @@
     const stress = Math.max(sizeRatio, crowdRatio);
 
     const sideBase = Math.max(isBadge ? 18 : 14, textRect.height * (isBadge ? 0.22 : 0.17));
+    const precisionBoost = isAfter && hasMilliseconds
+      ? millisecondTailWidth * (isMobile ? 0.92 : 0.74)
+      : 0;
     const sideBoost = (isMobile ? 1.28 : 1) * (isBadge ? width * 0.18 : width * 0.12)
-      + stress * Math.max(18, textRect.height * (isMobile ? 0.32 : 0.24));
+      + stress * Math.max(18, textRect.height * (isMobile ? 0.32 : 0.24))
+      + precisionBoost;
     const sideGap = sideBase + sideBoost;
     const centerY = textRect.top - frameRect.top + textRect.height * 0.5;
     let left = textRect.right - frameRect.left + sideGap + width * 0.5;
@@ -3610,8 +3634,12 @@
     let maxTop = frameRect.height - height * 0.5 - framePadding;
     if (isMobile) {
       if (isBefore) minLeft = Math.min(minLeft, -width * 0.45);
-      if (isAfter) maxLeft = Math.max(maxLeft, frameRect.width + width * 0.45);
       minTop = Math.min(minTop, -height * 0.3);
+    }
+    if (isAfter) {
+      const afterOverflow = width * (isMobile ? 0.45 : 0.34)
+        + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.78 : 0.62) : 0);
+      maxLeft = Math.max(maxLeft, frameRect.width + afterOverflow);
     }
     left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
     top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
@@ -3639,7 +3667,7 @@
       if (isBefore) {
         left = localTextRect.left - extraShift;
       } else if (isAfter) {
-        left = localTextRect.right + extraShift;
+        left = localTextRect.right + extraShift + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.36 : 0.26) : 0);
       }
       if (isBeforeInline) {
         top -= Math.max(height * 0.26, textRect.height * (0.2 + stress * 0.22));
@@ -3655,7 +3683,9 @@
         left = localTextRect.left - Math.max(width * 0.9, textRect.height * (0.78 + stress * 0.36));
         top -= Math.max(height * 0.18, textRect.height * (isBeforeInline ? 0.22 : 0.12));
       } else if (isAfter) {
-        left = localTextRect.right + Math.max(width * 0.9, textRect.height * (0.74 + stress * 0.34));
+        left = localTextRect.right
+          + Math.max(width * 0.9, textRect.height * (0.74 + stress * 0.34))
+          + (hasMilliseconds ? millisecondTailWidth * (isMobile ? 0.52 : 0.4) : 0);
         top -= Math.max(height * 0.1, textRect.height * 0.06);
       }
       left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
