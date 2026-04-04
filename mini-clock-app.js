@@ -544,9 +544,17 @@
   let soundPreviewTimer = 0;
   let soundPreviewSignature = "";
   let clockTicker = 0;
+  let clockRafTicker = 0;
   let alarmTicker = 0;
   let alarmAlertLoopTimer = 0;
   let clockTickerProfile = "";
+  const CLOCK_RESYNC_THRESHOLD_MS = 24;
+  const CLOCK_FORCE_RESYNC_INTERVAL_MS = 15000;
+  const preciseClock = {
+    wallBaseMs: Date.now(),
+    perfBaseMs: performance.now(),
+    lastSyncMs: Date.now(),
+  };
   let clockAnimationAt = 0;
   let clockRenderedText = "";
   let clockRenderedFormatKey = "";
@@ -3809,7 +3817,7 @@
         stopAlarmDisplayTicker();
         return;
       }
-      renderAlarmClockFace(new Date());
+      renderAlarmClockFace(new Date(nowPreciseMs()));
       ensureAlarmDisplayTicker();
     }, nextClockDelay("minute"));
   }
@@ -4093,12 +4101,12 @@
 
   function renderIdleTimer() {
     if (state.type === "clock") {
-      renderClockSnapshot(new Date());
+      renderClockSnapshot(new Date(nowPreciseMs()));
       return;
     }
     if (state.type === "alarm") {
       if (alarmUsesClockDisplay()) {
-        renderAlarmClockFace(new Date());
+        renderAlarmClockFace(new Date(nowPreciseMs()));
       } else {
         setClockMeridiem("");
         renderDigits(formatAlarmPrimary(state.alarm));
@@ -4204,7 +4212,7 @@
     renderStopwatchPanel();
     let handledAlarmRuntime = false;
     if (runtime.plan?.kind === "alarm" && runtime.phase === "running") {
-      renderAlarmRuntime(Date.now());
+      renderAlarmRuntime(nowPreciseMs());
       handledAlarmRuntime = true;
     } else if (runtime.plan?.kind === "alarm" && runtime.phase === "ended") {
       setClockMeridiem("");
@@ -4240,7 +4248,7 @@
     }
     if (runtime.plan.kind === "alarm") {
       if (alarmUsesClockDisplay()) {
-        renderAlarmClockFace(new Date());
+        renderAlarmClockFace(new Date(nowPreciseMs()));
       } else {
         setClockMeridiem("");
         renderDigits(formatAlarmPrimary(runtime.plan.config || state.alarm));
@@ -6612,6 +6620,15 @@
       scheduleAlarmDisplayTogglePosition();
       syncMinimalUI();
     }, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) recoverClockTicker();
+    });
+    window.addEventListener("focus", () => {
+      recoverClockTicker();
+    }, { passive: true });
+    window.addEventListener("pageshow", () => {
+      recoverClockTicker();
+    }, { passive: true });
 
     syncMinimalUI();
     resetToIdleState();
@@ -8780,7 +8797,41 @@
     return true;
   }
 
-  function renderClockSnapshot(now = new Date()) {
+  function nowPreciseMs() {
+    const perfNow = performance.now();
+    if (!Number.isFinite(perfNow)) return Date.now();
+    if (!Number.isFinite(preciseClock.wallBaseMs) || !Number.isFinite(preciseClock.perfBaseMs)) {
+      preciseClock.wallBaseMs = Date.now();
+      preciseClock.perfBaseMs = perfNow;
+      preciseClock.lastSyncMs = preciseClock.wallBaseMs;
+      return preciseClock.wallBaseMs;
+    }
+    return preciseClock.wallBaseMs + (perfNow - preciseClock.perfBaseMs);
+  }
+
+  function syncPreciseClock({ force = false } = {}) {
+    const perfNow = performance.now();
+    const observedNow = Date.now();
+    const projectedNow = preciseClock.wallBaseMs + (perfNow - preciseClock.perfBaseMs);
+    const drift = observedNow - projectedNow;
+    const elapsed = observedNow - preciseClock.lastSyncMs;
+    if (
+      force
+      || !Number.isFinite(projectedNow)
+      || !Number.isFinite(perfNow)
+      || !Number.isFinite(drift)
+      || Math.abs(drift) >= CLOCK_RESYNC_THRESHOLD_MS
+      || elapsed >= CLOCK_FORCE_RESYNC_INTERVAL_MS
+    ) {
+      preciseClock.wallBaseMs = observedNow;
+      preciseClock.perfBaseMs = perfNow;
+      preciseClock.lastSyncMs = observedNow;
+      return;
+    }
+    preciseClock.wallBaseMs += drift * 0.08;
+  }
+
+  function renderClockSnapshot(now = new Date(nowPreciseMs())) {
     const formatOptions = clockFormatOptions(state.clock);
     const zone = clockBaseTimeZone(state.clock);
     const display = clockDisplayPartsInZone(now, zone, formatOptions);
@@ -8795,17 +8846,23 @@
 
   function stopClockTicker() {
     if (clockTicker) clearTimeout(clockTicker);
+    if (clockRafTicker) cancelAnimationFrame(clockRafTicker);
     clockTicker = 0;
+    clockRafTicker = 0;
     clockTickerProfile = "";
     resetClockRenderState();
   }
 
   function nextClockDelay(precision = "seconds") {
-    const now = Date.now();
-    if (precision === "milliseconds") return 34;
+    const now = nowPreciseMs();
+    if (precision === "milliseconds") {
+      const frame = 1000 / 60;
+      const remain = frame - (now % frame);
+      return Math.max(8, Math.min(17, remain + 1));
+    }
     const unit = precision === "minute" ? 60000 : 1000;
     const remain = unit - (now % unit);
-    return Math.max(16, Math.min(unit, remain + 6));
+    return Math.max(12, Math.min(unit, remain + 6));
   }
 
   function scheduleClockTick() {
@@ -8814,12 +8871,35 @@
       return;
     }
     const precision = clockPrecisionOptionById(state.clock?.precision).id;
+    if (precision === "milliseconds") {
+      if (clockTicker) {
+        clearTimeout(clockTicker);
+        clockTicker = 0;
+      }
+      const rafTick = () => {
+        if (state.type !== "clock" || clockPrecisionOptionById(state.clock?.precision).id !== "milliseconds") {
+          if (clockRafTicker) cancelAnimationFrame(clockRafTicker);
+          clockRafTicker = 0;
+          return;
+        }
+        syncPreciseClock();
+        renderClockSnapshot(new Date(nowPreciseMs()));
+        clockRafTicker = requestAnimationFrame(rafTick);
+      };
+      clockRafTicker = requestAnimationFrame(rafTick);
+      return;
+    }
+    if (clockRafTicker) {
+      cancelAnimationFrame(clockRafTicker);
+      clockRafTicker = 0;
+    }
     clockTicker = window.setTimeout(() => {
       if (state.type !== "clock") {
         stopClockTicker();
         return;
       }
-      renderClockSnapshot(new Date());
+      syncPreciseClock();
+      renderClockSnapshot(new Date(nowPreciseMs()));
       scheduleClockTick();
     }, nextClockDelay(precision));
   }
@@ -8837,11 +8917,20 @@
       clockCitySetById(state.clock?.citySet).id,
       clockAmPmStyleOptionById(state.clock?.ampmStyle).id,
     ].join("|");
-    renderClockSnapshot(new Date());
-    if (!force && clockTicker && clockTickerProfile === profile) return;
+    syncPreciseClock({ force: true });
+    renderClockSnapshot(new Date(nowPreciseMs()));
+    const precision = clockPrecisionOptionById(state.clock?.precision).id;
+    const tickerActive = precision === "milliseconds" ? Boolean(clockRafTicker) : Boolean(clockTicker);
+    if (!force && tickerActive && clockTickerProfile === profile) return;
     stopClockTicker();
     clockTickerProfile = profile;
     scheduleClockTick();
+  }
+
+  function recoverClockTicker() {
+    syncPreciseClock({ force: true });
+    if (state.type !== "clock") return;
+    ensureClockTicker({ force: true });
   }
 
   function stopAlarmTicker() {
@@ -8886,7 +8975,7 @@
     return Math.max(120, Math.min(1000, 1000 - (now % 1000) + 8));
   }
 
-  function renderAlarmRuntime(now = Date.now()) {
+  function renderAlarmRuntime(now = nowPreciseMs()) {
     if (!runtime.plan || runtime.plan.kind !== "alarm") return;
     const remainingMs = runtime.plan.targetAt - now;
     if (remainingMs <= 0) {
@@ -8895,7 +8984,7 @@
     }
     runtime.phaseRemainingMs = remainingMs;
     if (alarmUsesClockDisplay()) {
-      renderAlarmClockFace(new Date());
+      renderAlarmClockFace(new Date(nowPreciseMs()));
     } else {
       setClockMeridiem("");
       renderDigits(formatClock(Math.max(0, Math.ceil(remainingMs / 1000))));
@@ -8907,7 +8996,7 @@
     renderAlarmBoard();
     stopAlarmTicker();
     alarmTicker = window.setTimeout(() => {
-      renderAlarmRuntime(Date.now());
+      renderAlarmRuntime(nowPreciseMs());
     }, nextAlarmTickDelay(runtime.plan.targetAt));
   }
 
@@ -8951,7 +9040,7 @@
       snoozed: true,
     };
     runtime.phase = "running";
-    renderAlarmRuntime(Date.now());
+    renderAlarmRuntime(nowPreciseMs());
     persistStore();
     logHistory("snoozed", {
       type: "alarm",
@@ -8989,7 +9078,7 @@
       snoozed: false,
     };
     runtime.phase = "running";
-    renderAlarmRuntime(Date.now());
+    renderAlarmRuntime(nowPreciseMs());
     persistStore();
     logHistory("dismissed", {
       type: "alarm",
@@ -9191,7 +9280,7 @@
       runtime.trailAt = 0;
       document.body.classList.remove("is-ended");
       clearTrailParticles();
-      renderAlarmRuntime(Date.now());
+      renderAlarmRuntime(nowPreciseMs());
       return;
     }
 
@@ -9297,7 +9386,7 @@
         snoozed: false,
       };
       document.body.classList.remove("is-ended");
-      renderAlarmRuntime(Date.now());
+      renderAlarmRuntime(nowPreciseMs());
       logHistory("resumed", {
         type: "alarm",
         summary: "Alarm armed",
