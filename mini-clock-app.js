@@ -566,8 +566,8 @@
     countupTargetSeconds: 0,
     stopwatchStartSeconds: 0,
     slot: {
-      speed: 5,
-      assist: "normal",
+      speed: 4,
+      assist: "easy",
       reelCount: 3,
       reelDigits: 10,
     },
@@ -1363,12 +1363,12 @@
 
   function slotSpeedOptionById(id) {
     const target = clamp(Math.floor(Number(id) || 0), 1, 9);
-    return SLOT_SPEED_OPTIONS.find(option => option.id === target) || SLOT_SPEED_OPTIONS[4];
+    return SLOT_SPEED_OPTIONS.find(option => option.id === target) || SLOT_SPEED_OPTIONS[3];
   }
 
   function slotAssistOptionById(id) {
     const target = String(id || "").toLowerCase();
-    return SLOT_ASSIST_OPTIONS.find(option => option.id === target) || SLOT_ASSIST_OPTIONS[1];
+    return SLOT_ASSIST_OPTIONS.find(option => option.id === target) || SLOT_ASSIST_OPTIONS[0];
   }
 
   function slotSummary(config = state.slot) {
@@ -9836,13 +9836,18 @@
     if (!els.slotPanel) return;
     ensureSlotRuntimeState();
     const isSlot = state.type === "slot";
-    const showSlotDetailUi = isSlot && !document.body.classList.contains("is-minimal");
+    const minimal = document.body.classList.contains("is-minimal");
+    const showSlotDetailUi = isSlot && !minimal;
+    const showSlotStateMinimal = isSlot && minimal && state.detailPanelVisible;
+    const showSlotState = showSlotDetailUi || showSlotStateMinimal;
+    document.body.classList.toggle("show-minimal-slot-state", showSlotStateMinimal);
     if (els.timerButton) els.timerButton.classList.toggle("is-slot-mode", isSlot);
     if (els.timerText) els.timerText.hidden = isSlot;
     if (els.slotCenter) els.slotCenter.hidden = !isSlot;
-    if (els.slotStateChip) els.slotStateChip.hidden = !showSlotDetailUi;
-    const visible = showSlotDetailUi;
-    els.stage?.classList.toggle("has-slot", visible);
+    if (els.slotStateChip) els.slotStateChip.hidden = !showSlotState;
+    const visible = showSlotDetailUi || showSlotStateMinimal;
+    els.stage?.classList.toggle("has-slot", showSlotDetailUi);
+    els.slotPanel.classList.toggle("is-state-only", showSlotStateMinimal);
     els.slotPanel.hidden = !visible;
     renderSlotReelValues();
     if (!visible) {
@@ -9873,6 +9878,7 @@
         : "idle");
     setSlotVisualMode(slotVisualMode);
     scheduleSlotVisualRefresh();
+    if (!showSlotDetailUi) return;
     if (els.slotStartBtn) {
       setButtonLabel(els.slotStartBtn, runtime.slot.spinning ? "RESPIN" : "SPIN");
       setButtonShortcut(els.slotStartBtn, "0");
@@ -12001,6 +12007,7 @@
     els.uiToggle.setAttribute("aria-label", hidden ? "Show UI" : "Hide UI");
     if (els.uiToggleLabel) els.uiToggleLabel.textContent = hidden ? "UI SHOW" : "UI HIDE";
     document.body.classList.toggle("show-minimal-detail", hidden && state.detailPanelVisible && isDetailPanelType());
+    document.body.classList.toggle("show-minimal-slot-state", hidden && state.detailPanelVisible && state.type === "slot");
     state.uiVisible = !hidden;
   }
 

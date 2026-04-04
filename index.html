@@ -61,6 +61,31 @@ body.is-minimal .stopwatch-panel{opacity:0;transform:translateY(10px);pointer-ev
 body.is-minimal .slot-panel{opacity:0;transform:translateY(10px);pointer-events:none}
 body.is-minimal .sequence-panel{opacity:0;transform:translateY(10px);pointer-events:none}
 body.is-minimal.show-minimal-detail .sequence-panel{opacity:1;transform:translateX(-50%);pointer-events:auto}
+body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only{
+  opacity:1;
+  pointer-events:none;
+  position:fixed;
+  left:50%;
+  top:50%;
+  bottom:auto;
+  width:min(100%,280px);
+  height:auto;
+  min-height:0;
+  margin:0;
+  gap:0;
+  z-index:6;
+  transform:translate(-50%,calc(-1 * clamp(132px,20vh,224px)));
+}
+body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-actions-wrap,
+body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-bottom{display:none!important}
+body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-state-row{
+  position:relative;
+  left:auto;
+  top:auto;
+  transform:none;
+  width:100%;
+  margin:0 auto;
+}
 body.is-minimal .side-rail{opacity:0;pointer-events:none}
 body.is-minimal .app{position:fixed;inset:0;padding:0!important;gap:0!important;display:block}
 body.is-minimal .stage{position:absolute;inset:0;height:auto;padding:0!important;overflow:hidden;display:block}
@@ -204,6 +229,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .alarm-display-toggle .scenario-mode-toggle{background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,.14));color:rgba(255,255,255,.92);border-color:rgba(255,255,255,.28);box-shadow:0 10px 28px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.3)}
 .stopwatch-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--stopwatch-panel-height);display:grid;grid-template-rows:auto auto auto minmax(0,1fr);gap:12px;justify-items:stretch;align-self:end}
 .slot-panel{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:min(100%,1040px);height:var(--slot-panel-height);display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;justify-items:stretch;align-self:end}
+.slot-panel.is-state-only .slot-actions-wrap,.slot-panel.is-state-only .slot-bottom{display:none}
 .slot-state-row{position:absolute;left:50%;top:0;display:flex;justify-content:center;width:min(100%,240px);transform:translate(-50%,clamp(-156px,-18vh,-108px));z-index:4;pointer-events:none}
 .stopwatch-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}
 .slot-start{display:flex;justify-content:center;width:min(100%,240px);justify-self:center}
