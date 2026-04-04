@@ -162,6 +162,7 @@
     settingsCloudMagicLinkBtn: $("settingsCloudMagicLinkBtn"),
     settingsCloudSignOutBtn: $("settingsCloudSignOutBtn"),
     settingsCloudLeaderboard: $("settingsCloudLeaderboard"),
+    settingsPanelSegment: $("settingsPanelSegment"),
     settingsClockAmPmStyle: $("settingsClockAmPmStyle"),
     settingsClockAmPmPicker: $("settingsClockAmPmPicker"),
     settingsClockAmPmButton: $("settingsClockAmPmButton"),
@@ -3925,6 +3926,16 @@
     renderSettingsClockAmPmPicker();
   }
 
+  function renderSettingsPanelControls() {
+    if (!els.settingsPanelSegment) return;
+    const value = state.detailPanelVisible ? "show" : "hide";
+    [...els.settingsPanelSegment.querySelectorAll("button[data-settings-panel]")].forEach(button => {
+      const active = (button.dataset.settingsPanel || "show") === value;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
   function closeSettingsSoundToneMenu() {
     if (!els.settingsSoundToneMenu || els.settingsSoundToneMenu.hidden) return;
     els.settingsSoundToneMenu.hidden = true;
@@ -4106,6 +4117,7 @@
     renderSettingsSoundControls();
     renderSettingsCloudControls();
     renderSettingsClockControls();
+    renderSettingsPanelControls();
   }
 
   function openSettings({ preserveType = false } = {}) {
@@ -4358,6 +4370,7 @@
     if (els.sequenceVisibilityLabel) els.sequenceVisibilityLabel.textContent = label;
     if (els.sequenceVisibilityBtn) els.sequenceVisibilityBtn.setAttribute("aria-label", `${label.toLowerCase()} progress panel`);
     if (els.sequenceCollapsedBtn) els.sequenceCollapsedBtn.setAttribute("aria-label", "Show progress panel");
+    renderSettingsPanelControls();
     syncMinimalUI();
   }
 
@@ -7778,6 +7791,13 @@
       persistStore();
       renderSettingsClockControls();
     });
+    els.settingsPanelSegment?.addEventListener("click", event => {
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest("button[data-settings-panel]");
+      if (!button) return;
+      const next = (button.dataset.settingsPanel || "show") === "show";
+      toggleDetailPanel(next);
+    });
     els.settingsSavePresetBtn?.addEventListener("click", () => saveCurrentPreset());
     els.settingsPresetName?.addEventListener("keydown", event => {
       if (event.key === "Enter") {
@@ -9837,17 +9857,18 @@
     ensureSlotRuntimeState();
     const isSlot = state.type === "slot";
     const minimal = document.body.classList.contains("is-minimal");
-    const showSlotDetailUi = isSlot && !minimal;
+    const showSlotDetailUi = isSlot && !minimal && state.detailPanelVisible;
+    const showSlotStateUi = isSlot && !minimal && !state.detailPanelVisible;
     const showSlotStateMinimal = isSlot && minimal && state.detailPanelVisible;
-    const showSlotState = showSlotDetailUi || showSlotStateMinimal;
+    const showSlotState = showSlotDetailUi || showSlotStateUi || showSlotStateMinimal;
     document.body.classList.toggle("show-minimal-slot-state", showSlotStateMinimal);
     if (els.timerButton) els.timerButton.classList.toggle("is-slot-mode", isSlot);
     if (els.timerText) els.timerText.hidden = isSlot;
     if (els.slotCenter) els.slotCenter.hidden = !isSlot;
     if (els.slotStateChip) els.slotStateChip.hidden = !showSlotState;
-    const visible = showSlotDetailUi || showSlotStateMinimal;
+    const visible = showSlotState;
     els.stage?.classList.toggle("has-slot", showSlotDetailUi);
-    els.slotPanel.classList.toggle("is-state-only", showSlotStateMinimal);
+    els.slotPanel.classList.toggle("is-state-only", showSlotStateUi || showSlotStateMinimal);
     els.slotPanel.hidden = !visible;
     renderSlotReelValues();
     if (!visible) {

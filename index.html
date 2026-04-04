@@ -664,6 +664,10 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .settings-mini{appearance:none;min-height:30px;padding:0 10px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.2);color:#17202e;font:inherit;font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase;cursor:pointer}
 .settings-mini.is-primary{background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,244,216,.92))}
 .settings-mini.is-danger{color:#7a1f39;background:rgba(255,233,236,.88)}
+.settings-panel-segment{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px;border-radius:14px;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12)}
+.settings-panel-segment button{appearance:none;min-height:40px;border:0;border-radius:10px;background:transparent;color:rgba(19,24,35,.62);font:inherit;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.settings-panel-segment button.is-active{background:linear-gradient(135deg,rgba(255,255,255,.98),rgba(255,248,238,.9));color:#152030;box-shadow:0 10px 22px rgba(88,66,124,.1)}
+.settings-panel-note{font-size:11px;line-height:1.35;color:rgba(19,24,35,.58)}
 .settings-sound{display:grid;gap:12px}
 .settings-sound-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:end}
 .settings-sound-row .settings-mini{min-height:48px}
@@ -880,11 +884,46 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   .stage.has-detail-collapsed{--detail-collapsed-height:42px;--detail-collapsed-bottom:8px;--detail-action-height:52px;--detail-action-gap:32px;--detail-overlap:32px;--detail-action-bottom:calc(var(--detail-collapsed-bottom) + var(--detail-collapsed-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom) - var(--detail-overlap))}
   .stage.has-alarm{--alarm-board-height:214px;--alarm-board-bottom:14px;--detail-action-height:52px;--detail-action-gap:14px;--detail-overlap:0px;--detail-action-bottom:calc(var(--alarm-board-bottom) + var(--alarm-board-height) + var(--detail-action-gap));--detail-reserve:calc(var(--detail-action-height) + var(--detail-action-bottom))}
   .stopwatch-actions,.stopwatch-stats{grid-template-columns:1fr}
-  .slot-actions-wrap{width:min(96vw,560px)}
-  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .slot-button--lever{--slot-lever-offset:16px;min-height:56px}
+  .slot-actions-wrap{
+    width:min(560px,calc(100vw - 20px));
+    width:min(560px,calc(100svw - 20px));
+    max-width:100%;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,3fr) minmax(0,1fr);
+    gap:8px;
+    align-items:stretch;
+  }
+  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;grid-column:2;min-width:0}
+  .slot-button--lever{
+    --slot-lever-offset:0;
+    position:relative;
+    top:auto;
+    left:auto;
+    right:auto;
+    transform:none;
+    width:100%;
+    min-height:52px;
+    border-radius:16px;
+    aspect-ratio:auto;
+    padding:0 8px;
+  }
   .slot-button--lever .button-label{font-size:10px;letter-spacing:.1em}
-  .slot-button--reset{--slot-reset-offset:16px;min-width:74px;min-height:52px;padding:13px 6px 8px}
+  .slot-button--lever:active{transform:none}
+  .slot-button--reset{
+    --slot-reset-offset:0;
+    position:relative;
+    top:auto;
+    left:auto;
+    right:auto;
+    transform:none;
+    min-width:0;
+    width:100%;
+    min-height:52px;
+    border-radius:16px;
+    padding:0 8px;
+  }
+  .slot-button--reset:active{transform:none}
+  .slot-button--reset::before{display:none}
   .slot-button--reset .button-label{font-size:9px}
   .stopwatch-laps{grid-template-columns:1fr}
   .stage-start{grid-template-columns:1fr;width:min(100%,240px)}
@@ -930,7 +969,7 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
   #settingsHistoryList{height:min(34vh,280px)}
 }
 @media (max-width:820px) and (orientation:portrait) and (pointer:coarse){
-  .app{padding:10px;gap:10px}
+  .app{padding:10px;gap:10px;max-width:100vw;max-width:100svw;overflow-x:clip}
   .side-rail{
     position:static;
     right:auto;
@@ -1054,6 +1093,9 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     gap:14px;
     overflow-y:auto;
     overflow-x:clip;
+    width:100%;
+    max-width:100vw;
+    max-width:100svw;
     padding:4px 0 calc(144px + env(safe-area-inset-bottom));
     --stopwatch-reserve:0px;
     --detail-reserve:0px;
@@ -1065,10 +1107,11 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     position:relative;
     inset:auto;
     width:100%;
+    max-width:100%;
     min-height:clamp(230px,42vh,420px);
     padding:10px 0 6px;
   }
-  .timer-frame{inline-size:min(100%,640px);padding:14px 6px 10px}
+  .timer-frame{inline-size:min(640px,calc(100vw - 20px));inline-size:min(640px,calc(100svw - 20px));padding:14px 6px 10px;max-width:100%}
   .timer-text{font-size:clamp(72px,24vw,168px);font-size:clamp(72px,24svw,168px)}
   .phase-splash{left:clamp(-28px,-4vw,-10px);top:clamp(-20px,-3.2vh,-8px);font-size:clamp(78px,20vw,140px)}
   .phase-splash[data-length="long"]{left:clamp(-40px,-5vw,-14px);top:clamp(-15px,-2.8vh,-6px);font-size:clamp(70px,18vw,126px)}
@@ -1086,7 +1129,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     top:auto;
     bottom:auto;
     transform:none;
-    width:min(100%,560px);
+    width:min(560px,calc(100vw - 20px));
+    width:min(560px,calc(100svw - 20px));
     max-width:100%;
     margin:0 auto;
   }
@@ -1172,16 +1216,45 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     left:auto;
     top:auto;
     transform:none;
-    width:min(100%,240px);
+    width:min(100%,260px);
     margin:0 auto;
   }
   .stopwatch-start,.stopwatch-actions,.stopwatch-stats{width:100%}
   .stopwatch-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stopwatch-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
   .slot-start,.slot-actions{width:100%}
-  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .slot-button--lever{--slot-lever-offset:12px}
-  .slot-button--reset{--slot-reset-offset:12px;min-width:68px;min-height:48px;padding:12px 6px 7px}
+  .slot-actions-wrap{
+    width:min(560px,calc(100vw - 20px));
+    width:min(560px,calc(100svw - 20px));
+    max-width:100%;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,3fr) minmax(0,1fr);
+    gap:8px;
+    align-items:stretch;
+  }
+  .slot-actions{grid-template-columns:repeat(3,minmax(0,1fr));grid-column:2;min-width:0}
+  .slot-button--lever,.slot-button--reset{
+    position:relative;
+    top:auto;
+    left:auto;
+    right:auto;
+    transform:none;
+    min-width:0;
+    width:100%;
+    min-height:48px;
+    border-radius:16px;
+    aspect-ratio:auto;
+    padding:0 8px;
+  }
+  .slot-button--lever{--slot-lever-offset:0}
+  .slot-button--lever:active{transform:none}
+  .slot-button--reset{
+    --slot-reset-offset:0;
+    min-height:48px;
+    padding:0 8px;
+  }
+  .slot-button--reset:active{transform:none}
+  .slot-button--reset::before{display:none}
   .slot-dashboard{gap:4px}
   .slot-inline{gap:10px}
   .slot-inline-value{font-size:16px}
@@ -1200,6 +1273,8 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
     z-index:63;
     padding:6px 8px;
     border-radius:14px;
+    max-width:calc(100vw - 20px);
+    max-width:calc(100svw - 20px);
   }
   .dock-grid{
     display:flex;
@@ -1667,6 +1742,14 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
                 </button>
                 <div class="settings-type-menu" id="settingsClockAmPmMenu" role="listbox" aria-label="Clock AM PM style list" hidden></div>
               </div>
+            </label>
+            <label class="settings-field">
+              <span>Panel</span>
+              <div class="settings-panel-segment" id="settingsPanelSegment" role="group" aria-label="Panel visibility">
+                <button type="button" data-settings-panel="show">SHOW</button>
+                <button type="button" data-settings-panel="hide">HIDE</button>
+              </div>
+              <small class="settings-panel-note">Controls slot/progress panel visibility in both normal and minimal views.</small>
             </label>
           </div>
         </section>
