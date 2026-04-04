@@ -120,7 +120,9 @@ body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 .clock-meridiem.is-before-badge,.clock-meridiem.is-after-badge,.clock-meridiem.is-before-badge-horizontal,.clock-meridiem.is-after-badge-horizontal,.clock-meridiem.is-top-left-badge,.clock-meridiem.is-top-right-badge{left:calc(50% - min(30vw,284px));padding:8px 10px;min-height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.3);background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.14));backdrop-filter:blur(14px) saturate(128%);box-shadow:0 12px 30px rgba(88,66,124,.12),inset 0 1px 0 rgba(255,255,255,.44);letter-spacing:0;text-shadow:none}
 .clock-meridiem.is-before-badge,.clock-meridiem.is-after-badge{display:grid;justify-items:center;align-content:center;gap:.04em}
 .clock-meridiem.is-before-badge-horizontal,.clock-meridiem.is-after-badge-horizontal,.clock-meridiem.is-top-left-badge,.clock-meridiem.is-top-right-badge{display:inline-flex;align-items:center;justify-content:center;gap:.14em;padding-inline:12px;letter-spacing:.14em}
+.clock-meridiem.is-top-left-badge,.clock-meridiem.is-top-right-badge{text-align:left;justify-content:flex-start}
 .clock-meridiem-glyph{display:block;font-size:1em;font-weight:900;line-height:.88;text-align:center}
+.clock-meridiem-gap{display:block;inline-size:100%;block-size:.16em;line-height:0;opacity:0}
 .clock-meridiem.is-slanted{left:calc(50% - min(20vw,196px));top:calc(50% - clamp(60px,8vh,96px));padding:0;border:0;background:transparent;box-shadow:none;font-family:'Caveat','Comic Sans MS',cursive;font-size:clamp(34px,4.2vw,62px);font-weight:700;letter-spacing:.03em;line-height:.88;color:rgba(255,255,255,.76);transform:translate(-50%,-50%) rotate(-11deg);text-shadow:0 8px 22px rgba(255,255,255,.18)}
 .alarm-display-toggle{position:absolute;left:50%;top:50%;z-index:3;display:grid;justify-items:end;gap:4px;transform:translate(-50%,-50%);pointer-events:auto}
 .alarm-display-toggle[hidden]{display:none}

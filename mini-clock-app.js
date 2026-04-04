@@ -3690,16 +3690,28 @@
     }
     const styleId = clockAmPmStyleOptionById(state.clock?.ampmStyle).id;
     const isVerticalBadge = styleId === "before-badge" || styleId === "after-badge";
+    const isBadge = styleId.includes("badge");
     els.clockMeridiem.hidden = false;
     els.clockMeridiem.className = `clock-meridiem is-${styleId}`;
     els.clockMeridiem.replaceChildren();
     if (isVerticalBadge) {
-      [...text].forEach(letter => {
+      const letters = [...text];
+      letters.forEach((letter, index) => {
         const glyph = document.createElement("span");
         glyph.className = "clock-meridiem-glyph";
         glyph.textContent = letter;
         els.clockMeridiem.appendChild(glyph);
+        if (index < letters.length - 1) {
+          const gap = document.createElement("span");
+          gap.className = "clock-meridiem-gap";
+          gap.setAttribute("aria-hidden", "true");
+          gap.textContent = " ";
+          els.clockMeridiem.appendChild(gap);
+        }
       });
+    } else if (isBadge) {
+      // Keep badge labels airy and readable (AM -> A M).
+      els.clockMeridiem.textContent = [...text].join(" ");
     } else {
       els.clockMeridiem.textContent = text;
     }
@@ -3834,6 +3846,7 @@
     const isTopLeft = styleId === "top-left-inline" || styleId === "top-left-badge";
     const isTopRight = styleId === "top-right-inline" || styleId === "top-right-badge";
     const isTopAligned = isTopLeft || isTopRight;
+    const isTopInline = styleId === "top-left-inline" || styleId === "top-right-inline";
     const isBefore = styleId.startsWith("before");
     const isAfter = styleId.startsWith("after");
     const isBadge = styleId.includes("badge");
@@ -3858,25 +3871,51 @@
         height = Math.max(16, els.clockMeridiem.offsetHeight || 20);
       }
     }
+    const meridiemStyle = window.getComputedStyle(els.clockMeridiem);
+    const padLeft = Number.parseFloat(meridiemStyle.paddingLeft || "0") || 0;
+    const padRight = Number.parseFloat(meridiemStyle.paddingRight || "0") || 0;
+    if (isTopAligned && isBadge) {
+      const maxBadgeWidth = Math.max(30, localTextRect.width + padLeft + padRight);
+      if (width > maxBadgeWidth) {
+        const badgeFitScale = Math.min(maxBadgeWidth / width, 1);
+        if (badgeFitScale < 1) {
+          fontSize = Math.max(9, fontSize * badgeFitScale);
+          els.clockMeridiem.style.fontSize = `${fontSize}px`;
+          els.clockMeridiem.style.setProperty("--meridiem-badge-size", `${Math.round(fontSize * 1.54)}px`);
+          width = Math.max(24, els.clockMeridiem.offsetWidth || 32);
+          height = Math.max(16, els.clockMeridiem.offsetHeight || 20);
+        }
+      }
+    }
 
     const sideGap = Math.max(4, localTextRect.height * (isBadge ? 0.035 : 0.03));
     const centerY = localTextRect.top + localTextRect.height * 0.5;
+    const badgeCenterNudge = isBadge && !isTopAligned ? Math.max(0.5, localTextRect.height * (isMobile ? 0.012 : 0.01)) : 0;
     const inlineTopGap = Math.max(0, localTextRect.height * (isMobile ? 0.005 : 0.01));
-    const topAlignedGap = Math.max(0, localTextRect.height * (isBadge ? (isMobile ? 0.02 : 0.024) : (isMobile ? 0.012 : 0.016)));
+    const topAlignedGap = Math.max(
+      isMobile ? 14 : 16,
+      height * (isBadge ? 0.44 : 0.38),
+      localTextRect.height * (isBadge ? (isMobile ? 0.2 : 0.18) : (isMobile ? 0.17 : 0.15)),
+    );
+    const topInlineLift = isTopInline
+      ? Math.max(isMobile ? 20 : 22, height * 1.08, localTextRect.height * (isMobile ? 0.22 : 0.2))
+      : 0;
     let left = localTextRect.right + sideGap + width * 0.5;
     if (isTopLeft) {
+      // Align badge/container left edge exactly to timer text left edge.
       left = localTextRect.left + width * 0.5;
     } else if (isTopRight) {
+      // Align badge/container right edge exactly to timer text right edge.
       left = localTextRect.right - width * 0.5;
     } else if (isBefore) {
       left = localTextRect.left - sideGap - width * 0.5;
     }
-    let top = centerY;
+    let top = centerY + badgeCenterNudge;
 
     if (isInline || isTopAligned) {
       // Inline and top-aligned styles anchor above the timer's top edge.
       const gap = isTopAligned ? topAlignedGap : inlineTopGap;
-      top = localTextRect.top - gap - height * 0.5;
+      top = localTextRect.top - gap - topInlineLift - height * 0.5;
     }
 
     if (isSlanted) {
@@ -3887,9 +3926,14 @@
       }
     }
 
-    const minLeft = width * 0.5 + framePadding;
-    const maxLeft = frameRect.width - width * 0.5 - framePadding;
-    const minTop = height * 0.5 + framePadding;
+    const minLeft = isTopAligned ? -width * 0.5 : width * 0.5 + framePadding;
+    const maxLeft = isTopAligned ? frameRect.width + width * 0.5 : frameRect.width - width * 0.5 - framePadding;
+    const minTopBase = height * 0.5 + framePadding;
+    const minTop = isTopInline
+      ? -height * 2.5
+      : isTopAligned
+        ? -height * 1.25
+        : minTopBase;
     const maxTop = frameRect.height - height * 0.5 - framePadding;
     left = minLeft > maxLeft ? frameRect.width * 0.5 : clamp(left, minLeft, maxLeft);
     top = minTop > maxTop ? frameRect.height * 0.5 : clamp(top, minTop, maxTop);
@@ -3904,7 +3948,16 @@
     });
     const overlapPadding = isMobile ? 4 : 3;
     if (!isSlanted && rectsIntersect(localMeridiemRect(), localTextRect, overlapPadding)) {
-      if (isInline || isTopAligned) {
+      if (isTopAligned) {
+        const emergencyGapBase = Math.max(
+          isMobile ? 16 : 18,
+          height * (isBadge ? 0.54 : 0.46),
+          localTextRect.height * (isBadge ? (isMobile ? 0.28 : 0.26) : (isMobile ? 0.24 : 0.22)),
+        );
+        const emergencyGap = isTopInline ? emergencyGapBase + topInlineLift : emergencyGapBase;
+        const emergencyTop = localTextRect.top - emergencyGap - height * 0.5;
+        top = minTop > maxTop ? frameRect.height * 0.5 : clamp(emergencyTop, minTop, maxTop);
+      } else if (isInline) {
         const emergencyTop = localTextRect.top - Math.max(height * 0.5 + 2, localTextRect.height * 0.06) - height * 0.5;
         top = minTop > maxTop ? frameRect.height * 0.5 : clamp(emergencyTop, minTop, maxTop);
       } else if (isBefore || isAfter) {
