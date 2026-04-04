@@ -4017,7 +4017,7 @@
     els.stageResetBtn.disabled = isStopwatch || isClock || (isAlarm && runtime.phase === "idle");
     setButtonLabel(els.stageResetBtn, "RESET");
     setButtonShortcut(els.stageResetBtn, hasSequenceSkip ? "4" : "3");
-    setButtonLabel(els.applyBtn, isAlarm ? (runtime.phase === "running" ? "RE-ARM" : "ARM") : "START");
+    setButtonLabel(els.applyBtn, isAlarm ? (runtime.phase === "running" ? "RE-ALARM" : "ALARM") : "START");
     els.stage?.classList.toggle("has-clock", isClock);
     els.stage?.classList.toggle("has-alarm", state.type === "alarm" && state.detailPanelVisible && !document.body.classList.contains("is-minimal"));
     if (els.stageSkipBtn) {
