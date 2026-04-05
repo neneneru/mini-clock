@@ -4585,9 +4585,15 @@
       if (!node || node.dataset.slotTapBound === "1") return;
       node.dataset.slotTapBound = "1";
       node.addEventListener("click", event => {
+        if (state.type !== "slot") return;
         event.preventDefault();
         event.stopPropagation();
-        stopSlotReelByIndex(index);
+        ensureSlotRuntimeState();
+        if (runtime.slot.spinning) {
+          stopSlotReelByIndex(index);
+          return;
+        }
+        applyAndStart();
       });
     });
   }
