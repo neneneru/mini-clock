@@ -50,31 +50,21 @@ body::before{
     radial-gradient(circle at 65% 35%,rgba(255,255,255,.08),transparent 16%),
     radial-gradient(circle at 45% 78%,rgba(255,255,255,.06),transparent 20%);
 }
-body.is-minimal .chrome,body.is-minimal .dock{display:none!important;opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal .timer-frame{background:transparent;border-color:transparent;box-shadow:none;backdrop-filter:none;padding:0}
+body.is-minimal .chrome,body.is-minimal .dock{opacity:0;visibility:hidden;pointer-events:none}
+body.is-minimal .timer-frame{background:transparent;border-color:transparent;box-shadow:none;backdrop-filter:none}
 body.is-minimal .timer-tag,body.is-minimal .ambient{opacity:0}
-body.is-minimal .stage-start{opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal .clock-controls{opacity:0;transform:translate(-50%,10px);pointer-events:none}
-body.is-minimal .clock-world{opacity:0;transform:translate(-50%,10px);pointer-events:none}
-body.is-minimal .alarm-board{opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal .stopwatch-panel{opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal .slot-panel{opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal .sequence-panel{opacity:0;transform:translateY(10px);pointer-events:none}
-body.is-minimal.show-minimal-detail .sequence-panel{opacity:1;transform:translateX(-50%);pointer-events:auto}
+body.is-minimal .stage-start{opacity:0;pointer-events:none}
+body.is-minimal .clock-controls{opacity:0;pointer-events:none}
+body.is-minimal .clock-world{opacity:0;pointer-events:none}
+body.is-minimal .alarm-board{opacity:0;pointer-events:none}
+body.is-minimal .stopwatch-panel{opacity:0;pointer-events:none}
+body.is-minimal .slot-panel{opacity:0;pointer-events:none}
+body.is-minimal .sequence-panel{opacity:0;pointer-events:none}
+body.is-minimal.show-minimal-detail .sequence-panel{opacity:1;pointer-events:auto}
 body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only{
   opacity:1;
   pointer-events:none;
-  position:fixed;
-  left:50%;
-  top:50%;
-  bottom:auto;
-  width:min(96vw,560px);
-  height:auto;
-  min-height:0;
-  margin:0;
-  gap:8px;
   z-index:6;
-  transform:translate(-50%,clamp(94px,13vh,152px));
 }
 body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-bottom{display:none!important}
 body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-state-row{
@@ -86,12 +76,6 @@ body.is-minimal.show-minimal-slot-state .slot-panel.is-state-only .slot-state-ro
   margin:0 auto;
 }
 body.is-minimal .side-rail{opacity:0;pointer-events:none}
-body.is-minimal .app{position:fixed;inset:0;padding:0!important;gap:0!important;display:block}
-body.is-minimal .stage{position:absolute;inset:0;height:auto;padding:0!important;overflow:hidden;display:block}
-body.is-minimal .stage-timer{position:absolute;inset:0!important;padding:0!important;display:grid;place-items:center}
-body.is-minimal .timer-frame{inline-size:100%;min-height:100%;padding:0!important;border-radius:0}
-body.is-minimal .timer-button{width:100%;height:100%}
-body.is-minimal .timer-text{font-size:clamp(96px,20vw,320px);font-size:clamp(96px,20svw,320px)}
 body.is-ended .timer-text{animation:endPulse 1.2s ease-in-out infinite}
 @keyframes gradientBG{0%{background-position:0 50%}50%{background-position:100% 50%}100%{background-position:0 50%}}
 @keyframes endPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}

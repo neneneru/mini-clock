@@ -5443,8 +5443,8 @@
           : "START",
     );
     els.stage?.classList.toggle("has-clock", isClock);
-    els.stage?.classList.toggle("has-slot", isSlot && !document.body.classList.contains("is-minimal"));
-    els.stage?.classList.toggle("has-alarm", state.type === "alarm" && state.detailPanelVisible && !document.body.classList.contains("is-minimal"));
+    els.stage?.classList.toggle("has-slot", isSlot && state.detailPanelVisible);
+    els.stage?.classList.toggle("has-alarm", state.type === "alarm" && state.detailPanelVisible);
     if (els.stageSkipBtn) {
       els.stageSkipBtn.disabled = !hasSequenceSkip || (runtime.phase !== "running" && runtime.phase !== "paused");
       setButtonShortcut(els.stageSkipBtn, "3");
@@ -7900,10 +7900,45 @@
       signOutCloud();
     });
 
+    const isMinimalVisibleControl = target => {
+      if (!(target instanceof Element)) return false;
+      const control = target.closest([
+        ".timer-button",
+        ".slot-reel",
+        ".slot-button",
+        ".alarm-display-toggle",
+        "[data-alarm-action]",
+        "button",
+        "a[href]",
+        "input",
+        "select",
+        "textarea",
+        "[role='button']",
+      ].join(","));
+      if (!(control instanceof Element)) return false;
+      if (control instanceof HTMLButtonElement && control.disabled) return false;
+      let node = control;
+      while (node && node !== document.body) {
+        if (node.hasAttribute("hidden")) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || style.pointerEvents === "none") {
+          return false;
+        }
+        node = node.parentElement;
+      }
+      const rect = control.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+
     const restoreUiFromMinimalTap = event => {
       if (!document.body.classList.contains("is-minimal")) return;
       if (!els.pickerOverlay.hidden || !els.settingsOverlay.hidden) return;
       if (typeof PointerEvent !== "undefined" && event instanceof PointerEvent && event.button !== 0) return;
+      if (isMinimalVisibleControl(event.target)) {
+        minimalRestoreClickBlockUntil = 0;
+        toggleMinimal(false);
+        return;
+      }
       event.preventDefault();
       event.stopPropagation();
       if (typeof event.stopImmediatePropagation === "function") {
@@ -9894,7 +9929,7 @@
     ensureSlotRuntimeState();
     const isSlot = state.type === "slot";
     const minimal = document.body.classList.contains("is-minimal");
-    const showSlotDetailUi = isSlot && !minimal && state.detailPanelVisible;
+    const showSlotDetailUi = isSlot && state.detailPanelVisible;
     const showSlotStateMinimal = isSlot && minimal && state.detailPanelVisible;
     const showSlotState = showSlotDetailUi || showSlotStateMinimal;
     document.body.classList.toggle("show-minimal-slot-state", showSlotStateMinimal);
@@ -10663,7 +10698,7 @@
     if (!els.clockWorld) return;
     const isClock = state.type === "clock";
     const showWorld = state.clock?.showWorld !== false;
-    const visible = isClock && showWorld && !document.body.classList.contains("is-minimal");
+    const visible = isClock && showWorld;
     els.clockWorld.hidden = !visible;
     if (!visible) {
       els.clockWorld.replaceChildren();
@@ -10694,7 +10729,7 @@
 
   function renderAlarmBoard() {
     if (!els.alarmBoard || !els.alarmCards) return;
-    const visible = state.type === "alarm" && state.detailPanelVisible && !document.body.classList.contains("is-minimal");
+    const visible = state.type === "alarm" && state.detailPanelVisible;
     els.alarmBoard.hidden = !visible;
     els.stage?.classList.toggle("has-alarm", visible);
     if (!visible) {
